@@ -1,0 +1,434 @@
+\chapter{Análisis Confirmatorio}
+
+\textbf{\hl{Para efectos prácticos y para no extender el tamaño del documento, resumiremos
+los procedimientos para pruebas de hipótesis, asumiendo el cumplimiento de los supuestos y
+utilizando en todos los casos pruebas paramétricas. Es decir, por ejemplo, cuando no se
+cumpla el supuesto de presencia de valores atípicos, no aplicaremos pruebas paramétricas
+robustas o por ejemplo, utilizar una prueba U de Mann-Whitney cuando no se cumpla el
+supuesto de distribución normal.}}
+
+\section{Prueba paramétrica para 2 muestras independientes - Caso 1}
+
+Existen diferencia estadísticamente significativa entre los ingresos de hombres y mujeres?
+
+
+ \begin{itemize}[itemsep=1ex]
+  \item \textbf{Pregunta de investigación:} ¿La media del grupo A $(\mu_{A})$ es
+  \textbf{distinta} a la media del grupo B $(\mu_{B})$
+  \item \textbf{Hipótesis:} 
+  \setlength{\parskip}{12pt}
+       \begin{itemize}[itemsep=1ex]
+         \item \textbf{H0:} $\mu_{A} = \mu_{B}$
+         \item \textbf{H1:} $\mu_{A} \neq \mu_{B}$
+       \end{itemize}
+ \end{itemize}
+
+\subsection{Explorar los datos}
+
+<<fig.width=6>>=
+bank |> mutate(income = income/1e3) |> 
+ ggboxplot(x = "sex", y = "income", add = "mean", add.params = list(color = "red"),
+           title = "Comparación de medias muestrales", fill = "sex", ggtheme = yunkel) +
+ scale_fill_OkabeIto() + guides(fill = "none") +
+ scale_y_continuous(name = "Ingreso en Miles de dólares [000]", labels = dollar) +
+ theme(axis.text = element_text(size = 12))
+@
+
+La variación es bastante similar al igual que las medias.
+
+\subsection{Evaluar supuestos del modelo}
+
+\subsubsection{Valores atípicos}
+
+Como estamos ante una prueba paramétrica se asumen que no existen valores atípicos
+significativos.
+
+<<>>=
+bank |>
+ group_by(sex) |>
+ identify_outliers(income) |>
+ select(sex, income, starts_with("is")) |>
+ tabla("Atípicos")
+@
+
+Vemos que si hay valores atípicos, sin embargo no son valores extremos.
+
+\subsubsection{Homogeneidad de varianza}
+
+Esto lo que implica es que la variación en el ingreso es similar en hombres y en mujeres.
+Para evaluar esto, utilizaremos la prueba de \texttt{levane\_test()}
+
+<<>>=
+bank |> levene_test(income ~ sex) |> tabla("Homogeneidad de varianza")
+@
+
+Vemos que el p-valor es superior al 0.05 que es el nivel de significación que
+utilizamos como referencia, por lo que \textbf{no podemos rechazar la hipótesis nula de
+igualdad de varianza}, es decir la variabilidad en el ingreso no es distinta en hombres y
+mujeres. 
+
+\subsubsection{Distribución normal}
+
+El siguiente supuesto que tenemos que evaluar es que los datos sigan una distribución similar
+a  la normal. Esto ya lo validamos en el apartado \nameref{sec:bondad}, en el que vimos que
+la distribución es muy consistente con una distribución \textbf{gamma}, sin embargo, por sugerencia de variación autores, el ingreso por lo general sigue una distribución \textbf{log-normal}
+
+<<>>=
+bank |> group_by(sex) |> shapiro_test(income) |> tabla("Evaluación de normalidad")
+@
+
+Vemos que en ambos sexos rechazamos la hipótesis nula de normalidad, con lo cual decimos que
+la variable no sigue una distribución normal. Comprobémoslo una vez, pero esta vez de
+forma visual
+
+<<fig.width=5, fig.height=3>>=
+bank |> ggqqplot(x = "income", facet.by = "sex", ggtheme = yunkel)
+@
+
+\subsubsection{Ajustar el modelo}
+
+<<test>>=
+rstatix::t_test(income ~ sex, data = bank, var.equal = TRUE) |>
+  tabla("Prueba de hipótesis")
+@
+
+En la prueba debemos notar que hemos colocado el parámetro \texttt{var.equal = TRUE}, en el
+que indicamos que las varianzas son iguales con base a nuestra prueba anterior.  En la tabla
+\ref{tab:test} vemos que n1 es el número de observaciones para el grupo 1 y n2 es el número
+de observaciones para el grupo 2, el valor del estadístico, sus grados de libertad y el
+p-valor resultante. 
+
+\begin{shaded}
+Como p-valor es superior al 0.05 \textbf{no podemos rechazar la hipótesis nula de igualdad de
+medias}, es decir, \textbf{no existen diferencias significativas entre el ingreso de los
+hombres y el de las mujeres.}
+\end{shaded}
+
+\subsubsection{Tamaño del efecto}
+
+Calcularemos el tamaño del efecto para ver que tan importante es esa diferencia. Utilizaremos
+a Cohen debido a que las desviaciones estándar de cada grupo son bastante similares.
+
+Para estimar el tamaño del efecto de la muestra (d) si tienes información
+previa de un artículo científico donde tengas la media de cada grupo entonces,
+utilizando la misma nomenclatura que \citep{cohen_statistical_1988} tenemos:
+
+\begin{equation}
+    \bm{d = \frac{(m_{B} - m_{A})}{SD_{pooled}}}
+    \label{dos-muestras}
+  \end{equation}
+
+  \begin{equation}
+    \bm{SD_{pooled} = \sqrt{(SD_{1}^{2} + SD_{2}^{2}) / 2}}
+    \label{sd-pooled}
+  \end{equation}
+  
+Donde:
+  
+  \begin{itemize}[itemsep=1ex]
+  
+    \item d: Tamaño del efecto de la "muestra" a calcular.
+    
+    \item $m_{A}$ y $m_{B}$: Representan las medias
+    muestrales para los grupos A y B.
+    
+    \item $\sigma$: Es la varianza común entre los grupos.
+    
+  \end{itemize}
+
+<<>>=
+cohens_d(income ~ sex, data = bank, var.equal = TRUE) |> tabla("Tamaño del efecto")
+@
+
+Para nuestros datos obtenemos un tamaño de efecto de 0.04 el cual es pequeño. Esto tiene
+sentido debido a que no se encontraron diferencias significativas.
+
+\subsection{Comunicar resultados}
+
+Para esto utilizaremos un diagrama de cajas un poco modificado, en el cual le he incluido
+además de las cajas, un diagrama de violín que nos muestra la distribución de los datos. 
+
+\begin{figure}[H]
+<<>>=
+ggbetweenstats(x = sex, y = income, data = bank, bf.message = FALSE, var.equal = TRUE,
+               ggtheme = drako) 
+@
+\caption{Interpretación de resultados}
+   \label{fig:sizef}
+\end{figure}
+
+En la figura \ref{fig:sizef} utilizamos la función \texttt{ggbetweenstats} (que es para
+comparar entre dos estadísticos), en este caso indicamos en el eje x que vamos a tener el
+sexo y en el eje y el ingreso y los datos de donde proviene. Entonces podemos decir que el
+ingreso es similar entre hombres y mujeres.
+
+
+\section{Prueba paramétrica para 2 muestras independientes - Caso 2}
+
+¿Existe una diferencia estadísticamente significativa entre los ingresos de los casados
+y los no casados?
+
+<<fig.width=6>>=
+bank |> mutate(income = income/1e3) |> ggboxplot(x = "married", y = "income", add = "mean",
+ add.params = list(color = "red"), title = "Comparación de medias muestrales",
+ fill = "married", ggtheme = yunkel) + scale_fill_OkabeIto() + guides(fill = "none") +
+ scale_y_continuous(name = "Ingreso en Miles de dólares [000]", labels = dollar) +
+ theme(axis.text = element_text(size = 12))
+@
+
+Sin valores atípicos y con dispersión similar.
+
+<<>>=
+bank |> levene_test(income ~ married) |> tabla("Homogeneidad de varianza")
+@
+
+No podemos rechazar la hipótesis nula de igualdad de varianza
+
+<<>>=
+bank |> group_by(married) |> shapiro_test(income) |> tabla("Evaluación de normalidad")
+@
+
+La variable no sigue una distribución normal
+
+<<>>=
+ggbetweenstats(x = married, y = income, data = bank, bf.message = FALSE, var.equal = TRUE,
+               ggtheme = drako) 
+@
+
+\begin{shaded}
+Como p-valor es superior al 0.05 \textbf{no podemos rechazar la hipótesis nula de igualdad de
+medias}, es decir, \textbf{no existen diferencias significativas entre el ingreso de los
+casados y el de los solteros.}
+\end{shaded}
+
+
+\section{Prueba paramétrica para 1 muestra}
+
+El banco maneja la hipótesis que el ingreso promedio de sus clientes es de US\$25,000.
+¿Qué puede decir al respecto?  (en este caso, asumir que la distribución de la variable es
+normal, aunque en la realidad no lo sea)
+
+ \begin{itemize}[itemsep=1ex]
+  \item \textbf{Pregunta de investigación:} ¿La media poblacional $(\mu)$ es
+  \textbf{distinta} a la media teórica $(m)$
+  \item \textbf{Hipótesis:} 
+  \setlength{\parskip}{12pt}
+       \begin{itemize}[itemsep=1ex]
+         \item \textbf{H0:} $\mu = m$
+         \item \textbf{H1:} $\mu \neq m$
+       \end{itemize}
+ \end{itemize}
+
+<<>>=
+bank |> get_summary_stats(income, type = "mean_sd") |> tabla("Exploración de los datos")
+@
+
+<<fig.width=3, fig.height=3>>=
+ggboxplot(y = "income", data = bank, add = "mean", add.params = list(color = "red"),
+          ggtheme = yunkel) |> suppressWarnings()
+@
+
+En rojo se indica el valor de la media.
+
+<<>>=
+bank %>% identify_outliers(income) |> select(income, starts_with("is"))
+@
+
+Sin presencia de atípicos
+
+<<fig.width=5, fig.height=3>>=
+gghistostats(x = income, data = bank, test.value = 25000, type = "p", test.value.size = TRUE,
+ test.value.line = TRUE, normal.curve = TRUE, bf.message = FALSE, ggtheme = yunkel)
+@
+
+Esta función nos permite incluir todos los resultados que hemos visto en formato de fórmula
+en el gráfico, con lo cual no nos tenemos que complicar escribiendo los resultados en un
+texto. Simplemente nos podemos centrar en escribir esta función en la cual le indicamos la
+variable en el eje x, los datos donde se encuentra, el valor que queremos probar, el tipo de
+prueba que es paramétrica, por eso ponemos p. Si incluimos las líneas que estamos evaluando y
+la media. También se incluye una curva. Sabemos que nuestros datos no siguen una distribución
+normal, por lo que esta prueba no es tan adecuada, pero bueno, esto nos permite reflejar todo
+lo que hemos visto.
+
+\begin{shaded}
+Pues no detectamos valores atípicos en los extremos, pero la distribución del ingreso no
+sigue una distribución normal. Además \textbf{el ingreso medio} $(M = 27,524.03,\; IC[0.11,
+0.28])$ \textbf{fue significativamente distinto a la referencia} de \$25,000 proporcionada
+por el banco con $t(599) = 4.79$, $p < 0.0001$, $d = 0.20$ 
+\end{shaded}
+
+\section{Prueba de proporciones para 2 muestras independientes}
+
+Como puede verse, algunos clientes tienen cuentas de cheques (\va{current\_act}) y otros
+tienen cuentas de ahorros (\va{save\_act}).  ¿Se puede decir que el tener una cuenta de
+ahorro depende de si se tiene una cuenta de monetarios?  Explórelo gráfica y analíticamente.
+
+<<>>=
+bank %>% ggbarstats(x = current_act, y = save_act, bf.message = FALSE)
+@
+
+Aquí vemos que de los 186 clientes que tienen cuenta de ahorro el 73\% cuenta también con
+una cuenta de cheque, mientras que de los 414 clientes que no cuentan con cuenta de ahorro,
+el 77\% si cuenta con cuenta con cuenta de cheque.
+
+En la parte superior del gráfico observamos los resultados de la prueba de independencia
+Chi-cuadrado. 
+
+\begin{shaded}
+Vemos que el p-valor \textbf{no es inferior a 0.05 por lo cual no podemos rechazar la
+hipótesis nula de igualdad de proporciones}. También obtenemos el tamaño del efecto
+con el estadístico $\widehat{V}$ (V de Cramer) que es un valor que se calcula a partir de la
+misma prueba chi-cuadrado y toma valores entre cero (cuando no hay asociación) y uno
+cuando hay asociación perfecta. Entonces cuando mayor sea la $\widehat{V}$ mayor será la
+relación entre las variables. En este caso es casi cero por que el porcentaje de clientes
+que tienen cuenta de ahorro no difiere ente aquellos que tienen o no cuentas de cheque.
+\end{shaded}
+
+
+\section{ANOVA entre-sujetos}
+
+Existe diferencia estadísticamente significativa entre el nivel de ingresos de las
+personas según la región donde viven (i.e. variable REGION, que tiene 4 niveles).
+
+A continuación seguiremos el procedimiento estándar para experimentos con un factor y
+múltiples niveles.
+
+ \begin{itemize}[itemsep=1ex]
+  \item \textbf{Pregunta de investigación:} ¿La media $\mu$ no es la misma para todos los
+  grupos (al menos un grupo es \textbf{distinto}) 
+  \item \textbf{Hipótesis:} 
+  \setlength{\parskip}{12pt}
+       \begin{itemize}[itemsep=1ex]
+         \item \textbf{H0:} $\mu_{1} = \mu_{2} =\; ... \;\; \mu_{k}$
+         ($k$ es el número de grupos)
+         \item \textbf{H1:} $\mu_{i} \neq \mu_{j}$ (\textbf{distinto} para algún $i$ y $j$)
+       \end{itemize}
+ \end{itemize}
+
+\subsection{Explorar los datos}
+
+<<>>=
+bank |> group_by(region) |> get_summary_stats(income, type = "mean_sd") |>
+ tabla("Resumen numérico")
+@
+
+Vemos que para la región RURAL el ingreso es mayor, aunque también presenta una mayor
+desviación. Los valores promedio en general no se ven tan distantes.
+
+<<>>=
+bank |> ggboxplot(x = "region", y = "income", orientation = "horizontal", ggtheme = yunkel)
+@
+
+Vemos valores atípicos en la región TOWN (ciudad), y al parecer hay menores valores de
+ingreso para la región INNER\_CITY.
+
+
+\subsection{Evaluar supuestos}
+
+Por ser una prueba paramétrica tenemos 3 supuestos principales:
+
+  \begin{enumerate}[numeros]
+   \item Valores atípicos
+   \item Distribución normal
+   \item Homogeneidad de varianza
+ \end{enumerate}
+
+\subsubsection{Valores atípicos}
+
+<<>>=
+bank |>
+ group_by(region) |>
+ identify_outliers(income) |>
+ select(sex, income,starts_with("is")) |> 
+ tabla("Atípicos")
+@
+
+Si hay presencia de atípicos, pero ninguno se considera un valor extremo. Procederemos con
+este tipo de prueba.
+
+\subsubsection{Distribución normal}
+
+Este modelo al ser un ANOVA o modelo digamos lineal se puede utilizar la función \ti{lm}
+debido a que ANOVA es un caso especial del modelo lineal. La respuesta es la variable
+\va{income} y la variable predictora la \va{region}. Entonces guardamos los resultados de
+este modelo de regresión lineal en un objeto llamado fit y los residuos de ese modelo son los
+que vamos a evaluar si siguen una distribución normal:
+
+<<>>=
+fit <- lm(income ~ region, data = bank)
+shapiro_test(residuals(fit)) |> tabla("Prueba de Normalidad")
+@
+
+Aquí vemos que como \textbf{el p-valor es menor al 0.05 rechazamos la hipótesis nula de
+normalidad. Los residuos no se distribuyen de manera normal.}
+
+<<fig.width=4, fig.height=4>>=
+ggqqplot(residuals(fit)) + yunkel
+@
+
+Y es lo que vemos aquí, que se escapan un poco, sobre todo en la parte central, se salen
+de los límites algunos de los valores.
+
+\subsubsection{Homogeneidad de varianza}
+
+Habiendo creado el objeto fit con la función plot podemos graficar los residuos en
+función de los valores ajustados.
+
+Vemos, en este caso, que parecen ser bastante homogéneos los residuos para cada
+grupo. Estos serían los tres grupos que estamos comparando.
+Le podemos aplicar también en la prueba de \emph{levene}.
+
+<<fig.width=7, fig.height=5>>=
+autoplot(fit, which = 1:2, label.repel = TRUE, shape = 21, col = "white", 
+         smooth.colour = "red", label.size = 2.5,fill = "#0072B2",size = 2.5) + yunkel
+@
+
+
+<<>>=
+bank |> levene_test(income ~ region) |> tabla(cap = "Resultados Levene")
+@
+
+Vemos aquí que como el valor no es inferior al 0.05 \textbf{no podemos rechazar la
+homogeneidad de varianza}
+
+\subsection{Ajustar el modelo}
+
+Si asumimos que la varianza es homogénea entonces utilizaremos función \ti{anova\_test} del
+paquete $\left \{rstatix \right \}$ \citep{R-rstatix}. El tipo de suma de cuadrados se recomienda utilizar el 2, sobre todo para modelos de más de un predictor.
+
+<<>>=
+bank |> 
+  anova_test(income ~ region) |> 
+  tabla(cap = "Resultado ANOVA Tipo II")
+@
+
+Debido a que el p-valor no es menor al 0.05, \textbf{no podemos rechazar la hipótesis nula de que no existen diferencias signficativas en al menos unos de los grupos con base al ingreso.}
+
+\subsection{Comunicar resultados}
+
+Aplicaremos de una vez la corrección de Bonferroni.
+
+<<fig.width=6, fig.height=4>>=
+ggbetweenstats(x = region, y = income, data = bank, p.adjust.method = "bonferroni",
+               bf.message = FALSE, var.equal = TRUE, ggsignif.args = list(textsize = 2.5,                      tip_length = 0.01)) + theme(plot.subtitle = element_text(size = 8))
+  @
+
+\begin{shaded}
+Lo que nos resume son todas las pruebas que hemos visto anteriormente en formato APA listo
+para publicación. Vemos el resultado de la prueba estadística de Fisher, el p-valor que dice
+que \textbf{no hay diferencias significativas entre alguno de los grupos}, el tamaño del
+efecto con un valor prácticamente de cero.
+\end{shaded}
+
+
+
+
+
+
+
+
+
+
+
+
+

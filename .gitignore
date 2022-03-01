@@ -35,24 +35,23 @@ vignettes/*.pdf
 *.utf8.md
 *.knit.md
 
+
+office365
+
+/*.css
+
 # R Environment Variables
 .Renviron
-
-
 # archivos agregados
 .Rproj
 *.Rproj
 *.lnk
 *.xlsx
-*.doc
-*.mmap
-*.psd
 *.fst
 *.csv
 *.rdb
 *.rdx
 *.RData
-*.xml
 *.png
 *.jpg
 *.pptx
@@ -65,7 +64,7 @@ vignettes/*.pdf
 *.tex
 *.log
 *.bib
-# html
+*.drawio
 *.gz
 *.Rproj
 *.docx
@@ -83,7 +82,7 @@ vignettes/*.pdf
 *.aux
 *.out
 
-__packages
+
 
 
 

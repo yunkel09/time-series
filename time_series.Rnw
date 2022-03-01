@@ -1,0 +1,498 @@
+% plantilla para tesis
+% fecha-creación: 2022-02-06
+% autor: William Chavarría
+
+% tipo de documento
+\documentclass[10pt, a4paper, oneside]{book}
+
+% IDIOMA Y CODIFICACIÓN ========================================================
+\usepackage[spanish,es-noindentfirst,es-tabla, es-lcroman]{babel}
+\decimalpoint
+
+% ==============================================================================
+
+% FUENTES Y SIMBOLOS ===========================================================
+\usepackage[sc]{mathpazo}
+\usepackage{amssymb}
+\usepackage{xspace}
+
+\usepackage[no-math]{fontspec}
+\usepackage{bm}   
+\setmainfont{SouvenirStd-Light.otf}[
+Ligatures=TeX,
+BoldFont = Souvenir-Medium.otf,
+ItalicFont = SouvenirStd-LightItalic.otf,
+BoldItalicFont = Souvenir-BoldItalic.otf]
+
+
+\setmonofont[Scale=0.8,
+             Contextuals = Alternate,
+             Ligatures = TeX]{JetBrains Mono Medium}
+             
+             
+\usepackage{listings}
+\lstset{
+    basicstyle = \ttfamily,
+    columns = flexible}
+    
+\makeatletter
+\renewcommand*\verbatim@nolig@list{}
+\makeatother
+             
+             
+% ==============================================================================
+
+% ALGORITMOS ===================================================================
+
+% \usepackage[ruled, vlined, linesnumbered]{algorithm2e}
+
+% ==============================================================================
+
+
+\newcommand{\latex}{\LaTeX\xspace}
+
+% IMÁGENES EXTERNAS ============================================================
+% debemos crear una carpeta que se llame imágenes
+\usepackage{graphicx}
+\graphicspath{ {./imagenes/} }
+% \usepackage{svg}
+% ==============================================================================
+
+
+% GENERALES ====================================================================
+\usepackage[authoryear]{natbib}             % hacer citas
+\usepackage{url}                            % agregar links de urls
+
+\renewcommand{\UrlFont}{\sffamily\small}
+
+\usepackage[toc, page]{appendix}            % agregar apéndice
+\renewcommand\appendixtocname{Apéndices}    % renombrar apéndice en toc
+\addto\captionsspanish{                
+  \renewcommand\appendixname{Apéndices}     % renombrar apéndices en general
+  \renewcommand\appendixpagename{Apéndices} % renombrar nombre en cover page
+}
+\setlength{\parskip}{\baselineskip}
+% ==============================================================================
+
+
+% CITAS TEXTUALES  =============================================================
+\usepackage[autostyle]{csquotes}
+\MakeOuterQuote{"}
+% ==============================================================================
+
+
+% FLOTADORES ===================================================================
+\usepackage{caption}
+\captionsetup{font=footnotesize,
+              labelfont=bf}
+
+\usepackage{wrapfig}
+\usepackage{floatrow}    % una mejor opción que float
+
+% la siguiente macro es para nunca tener saltos de página antes de flotantes
+% anclados
+\makeatletter
+\renewcommand\floatHpenalties{\@beginparpenalty\@M}
+\makeatother
+
+% hacer que las tablas tengan la descripción (caption) "arriba"
+\floatsetup[table]{style=plaintop}
+\floatsetup{font=small}
+\floatsetup[figure]{margins=raggedright}
+
+% ==============================================================================
+
+
+% RESALTADO ====================================================================
+\usepackage{soulutf8}
+\setulcolor{blue}
+% \ul{} es para resaltar
+% \setulcolor{red}
+\sethlcolor{yellow}
+% ==============================================================================
+
+% COLORES ======================================================================
+% para que el color sea preciso debemos sumarle siempre 1 punto al red, es decir,
+% primer valor en RGB. e.g si el valor con el cuenta gotas es 151, 64, 0, para
+% obtener un valor preciso es necesario sumarle 1 para que quede 152, 64, 0
+\usepackage{xcolor}
+ \definecolor{celeste}{RGB}{0, 173, 238}  % títulos sin enumerar
+ \definecolor{azul}{RGB}{1, 94, 171}      % títulos sin enumerar
+ \definecolor{cafe}{RGB}{152, 64, 0}      % variables
+ \definecolor{naranja}{RGB}{218, 95, 2}   % comentario muy importante
+ \definecolor{fondo}{RGB}{247, 247, 240}  % autoexplicaciones
+ \definecolor{rojo}{RGB}{198, 0, 0}       % para valores NA
+% ==============================================================================
+
+
+% NUEVOS COMANDOS ==============================================================
+% \ti es para escribir pequeños títulos que no van numerados en la sección
+\newcommand{\ti}[1]{\textcolor{azul}{\textbf{\texttt{#1}}}}
+\newcommand{\im}[1]{\textcolor{naranja}{\textbf{#1}}}
+\newcommand{\va}[1]{\textcolor{cafe}{\texttt{\textbf{#1}}}}
+\newcommand{\ro}[1]{\textcolor{rojo}{\textbf{#1}}}
+\newcommand{\al}[1]{\raisebox{0pt}[\dimexpr\height#1\baselineskip\relax]}
+% =============================================================================
+
+
+% PERSONALIZAR TABLA DE CONTENIDO (TOC) ========================================
+\usepackage{tocloft}
+\setlength{\cftbeforetoctitleskip}{0pt} % espacio antes del título del índice
+\setlength{\cftaftertoctitleskip}{12pt} % espacio después del indice
+\setlength{\cftparskip}{5pt}            % espacio entre párrafos
+% \setlength{\cftbeforechapskip}{10pt}    % espacio antes de cada capítulo
+\setlength{\cftbeforesecskip}{3pt}      % espacio antes de cada sección
+\setlength{\cftbeforesubsecskip}{5pt}   % espacio antes de cada subsección
+\setcounter{tocdepth}{3}                % profundiad del TOC
+% ==============================================================================
+
+
+% PERSONALIZAR ENCABEZADOS (CAPÍTULOS, SECCIONES, ETC) =========================
+\usepackage[pagestyles]{titlesec}
+
+\titleformat{\chapter}[display]         % que no se vean los capítulos
+  {\normalfont\bfseries}{}{0pt}{\Huge}
+  
+\titleformat{\chapter}  % agregar una línea después de cada capítulo
+  {\normalfont\Huge\bfseries}{\thechapter}{1em}{}[{\titlerule[0.4pt]}]
+
+% definir espacios antes y despues de capítulos y secciones
+\titlespacing{\chapter}{0pt}{-32pt}{0.5cm}
+% \titlespacing{\section}{0pt}{5pt}{0.5cm}
+\titlespacing{\section}{0pt}{5pt}{0.1cm}
+\titlespacing{\subsection}{0pt}{3pt}{0cm}
+\titlespacing{\subsubsection}{0pt}{3pt}{0cm}
+\titlespacing{\paragraph}{0pt}{3pt}{0cm}
+\titlespacing{\subparagraph}{0pt}{3pt}{0cm}
+% ==============================================================================
+
+
+
+% ESPACIOS =====================================================================
+\setlength{\textfloatsep}{2ex} % espacio entre figuras y texto
+% ==============================================================================
+
+
+% CÓDIGO R =====================================================================
+\setlength{\parindent}{0pt}    % párrafos sin indentación
+\parskip = 0.125in
+
+\ifdefined\knitrout
+  \renewenvironment{knitrout}{
+
+    % \setlength{\parskip}{0ex} % espacio entre la instrucción y la salida
+    \setlength{\parskip}{2ex} % espacio entre la instrucción y la salida
+    % \topsep=0ex               % separación entre chunk y parrafo parte superior
+    \topsep=0.5ex               % separación entre chunk y parrafo parte superior
+    \partopsep=-0.5ex         % separación entre instrucción y salida
+    \vspace{0.8ex}   % controla la separación entre el parrafo superior y el
+                     % chunk. con 0.8ex nos da 3.62 cm con 800% de zoom
+    
+  }{
+     \vspace{-0.4ex} % esta es la distancia entre el chunk y el párrafo en la
+                     % parte inferior. 
+  }
+\else
+\fi
+% ==============================================================================
+
+
+% ENUMERAR =====================================================================
+\usepackage{enumitem}
+   \setenumerate{noitemsep}
+	  % \setitemize{noitemsep}
+	  \setdescription{noitemsep}
+
+\setlist{nolistsep}
+
+% definimos dos tipos de enumeraciones: letras y números
+% \SetEnumitemKey{letras}{itemsep = 7pt,
+%                         label = \emph{\alph*}),
+%                         parsep = 0.125in}
+
+\SetEnumitemKey{letras}{itemsep = 0pt,
+                        label = \emph{\alph*}),
+                        parsep = 0.125in}
+                        
+% \SetEnumitemKey{numeros}{itemsep = 7pt,
+%                          label = (\arabic*),
+%                          ref = \arabic*,
+%                          parsep = 0.125in}
+                         
+\SetEnumitemKey{numeros}{label = (\arabic*),
+                         ref = \arabic*,
+                         parsep = 0.125in}                         
+                         
+\newlist{legal}{enumerate}{10}
+\setlist[legal]{label* = \arabic*., 
+                itemsep = 7pt,
+                parsep = 0.125in}                         
+                         
+% ==============================================================================
+
+
+% AGREGAR COLOR DE FONDO =======================================================
+\usepackage{framed}
+\colorlet{shadecolor}{fondo}
+% ==============================================================================
+
+
+% TABLAS =======================================================================
+\usepackage{booktabs}
+
+\usepackage{array}
+   \newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+   \newcolumntype{M}[1]{>{\arraybackslash}m{#1}}
+
+
+\setlength{\abovetopsep}{-0.9ex}
+% \renewcommand{\arraystretch}{1.5}
+% ==============================================================================
+
+% MICROTYPE ====================================================================
+% \usepackage{microtype}
+% \microtypesetup{expansion=true,
+%                 shrink=40,
+%                 factor=1200,
+%        							  activate={true,nocompatibility},
+%        							  tracking=true,
+%        							  stretch = 40,
+%        							  babel=true}
+% \AtBeginEnvironment{verbatim}{\microtypesetup{activate=false}}
+% ==============================================================================
+
+% justificar
+\usepackage{ragged2e} 
+
+% MARGENES =====================================================================
+\usepackage{geometry}
+\geometry{a4paper,           % tamaño de papel
+          verbose,           % agregar información al log
+          tmargin = 1in,
+          bmargin = 1in,
+          lmargin = 1in,
+          rmargin = 1in}
+% ==============================================================================
+
+
+% ENCABEZADOS ==================================================================
+\usepackage{fancyhdr}
+  \pagestyle{fancy}
+  \fancyhf{}
+  \fancyhead{}
+  \fancyhead[R]{\textbf{Máxima Formación}}
+  \fancyhead[L]{\rightmark}
+  \fancyfoot[L]{Maestría en Machine Learning}
+  \fancyfoot[R]{\thepage}
+  \renewcommand{\headrulewidth}{0.4pt}
+  \renewcommand{\footrulewidth}{0.4pt}
+  
+ \setlength{\headheight}{16pt} 
+% ==============================================================================
+
+
+% VARIABLES GENERALES ==========================================================
+\def\maestria{MASTER IN MACHINE LEARNING}
+\def\titulo{Series de Tiempo}
+\def\autor{William Chavarría Zamora}
+\def\fecha{28 de Febrero de 2022}
+% ==============================================================================
+
+
+% REFERENCIAS ==================================================================
+\usepackage{hyperref}
+ \hypersetup{
+     colorlinks   = true,
+     citecolor    = blue,
+     linktocpage  = false,
+     pdfstartpage = 1,
+     breaklinks   = true,
+     pdfpagemode  = UseNone,
+     pageanchor   = true,
+     pdfpagemode  = UseOutlines,
+     plainpages   = false,
+     bookmarksnumbered,
+     bookmarksopen= true,
+     bookmarksopenlevel = \maxdimen,
+     hypertexnames = true,
+     pdfhighlight  = /O}
+% ==============================================================================
+
+% RELACIÓN CODIGO-IMAGENES VS TEXTO ============================================
+\setcounter{topnumber}{2}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.7}
+% ==============================================================================
+
+% \usepackage{pdflscape}
+% \usepackage{lipsum}
+
+\begin{document}
+
+\pagenumbering{roman}
+
+<<opciones_knitr, include=FALSE>>=
+library(knitr)
+
+# definir opciones knitr
+opts_chunk$set(echo        = TRUE, 
+               include     = TRUE,
+               cache       = FALSE,
+               fig.align   = 'center',
+               self.contained = FALSE,
+               message     = FALSE,
+               warning     = FALSE, 
+               comment     = NA, 
+               highlight   = TRUE,
+               strip.white = TRUE, 
+               fig.width   = 6, 
+               fig.asp     = 0.61,
+               # fig.height  = 3,
+               out.extra = '',
+               fig.path    = "figure/",
+               fig.align   = "center")
+
+# definir formato del código
+opts_knit$set(out.format = "latex")
+thm <- knit_theme$get("biogoo")
+# thm <- knit_theme$get("acid")
+knit_theme$set(thm)
+
+
+# establecer opciones generales
+options(pillar.sigfig    = 5,
+        tibble.print_min = 10,
+        scipen = 999,
+        digits = 7,
+        readr.show_col_types = FALSE,
+        dplyr.summarise.inform = FALSE)
+
+set.seed(2021)
+
+# evitar el conflicto que hay con los paquetes {color} y {xcolor}
+knit_hooks$set(document = function(x) {sub('\\usepackage[]{color}', 
+                                           '\\usepackage{xcolor}', 
+                                           x, 
+                                           fixed = TRUE)})
+
+ conserje <- c("tabyl",
+              "adorn_pct_formatting",
+              "clean_names",
+              "adorn_totals",
+              "make_clean_names")
+
+ import::from("janitor", conserje, .character_only = TRUE)
+
+ # importar solo las funciones necesarias de cada paquete
+ import::from(magrittr, "%T>%", "%$%", .into = "operadores")
+ import::from(kableExtra, .except = "group_rows")
+ import::from(cowplot, .except = "stamp")
+ import::from(colorblindr, scale_fill_OkabeIto, palette_OkabeIto)
+ import::from(conectigo, cargar_fuentes, conectar_msql)
+ import::from(lubridate, .except = c("intersect", "setdiff", "union"))
+ import::from(forecast, ggAcf)
+ import::from(dbplyr, in_schema)
+
+ # cargar paquetes en el que sabemos necesitamos todas las opciones
+ pacman::p_load(scales, fpp3, tidyverse)
+ # cargar las fuentes a utilizar
+ cargar_fuentes()
+ 
+ 
+ # definir el tema por defecto a utilizar en gráficos ggplot
+ yunkel <- theme_cowplot(font_family = "yano") +
+ 	         theme(plot.margin   = unit(c(6, 1, 1, 1), "mm"),
+ 	               axis.title    = element_text(size = 10),
+ 	               axis.text     = element_text(size = 10),
+ 	               plot.title    = element_text(size = 18),
+ 	               plot.subtitle = element_text(size = 12))
+ 
+ # tema con grid horizontal y vertical
+ drako <- theme_bw(base_family = "yano", base_size = 14) +
+ 	        theme(plot.margin    = unit(c(6, 1, 1, 1), "mm"),
+ 	              axis.title     = element_text(size = 12),
+ 	              axis.text      = element_text(size = 10),
+ 	              plot.title     = element_text(size = 18),
+ 	              plot.subtitle  = element_text(size = 12))
+ 
+ # para histogramas
+ furia <- yunkel + 
+          theme(axis.line = element_blank(), 
+                panel.grid.major.y = element_line(color = "#e5e5e5"))
+ 
+ 
+ # función para crear tablas genéricas
+ tabla <- function(df, cap = "prueba") {
+  
+  df %>% 
+   kbl(booktabs = TRUE, linesep = "", caption = cap) %>% 
+   kable_paper(full_width = F) %>% 
+   kable_styling(latex_options = "HOLD_position", table.envir = "float")
+ 
+ }
+ 
+theme_set(drako)
+@
+
+% aquí va la portada
+
+
+% \renewcommand{\contentsname}{Índice}
+% \tableofcontents
+% 
+% \addtocontents{toc}{\protect\thispagestyle{empty}} % quitar número de página 
+\pagenumbering{arabic}
+\setcounter{page}{1} % establecer pag 1
+
+% aquí van las secciones
+ 
+
+<<motor, child='secciones/01_marco_teorico.Rnw'>>=
+
+@
+
+
+
+<<bib, child='secciones/09_bibliografia.Rnw'>>=
+
+@
+
+
+
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

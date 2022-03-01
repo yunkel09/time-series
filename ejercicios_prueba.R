@@ -1,6 +1,7 @@
 
 	
 	import::from(dbplyr, in_schema)
+	import::from(forecast, gglagplot)
 	import::from(cowplot, .except = "stamp")
 	library(fabletools)
 	library(feasts)
@@ -25,12 +26,13 @@
 	
 	con <- conectar_msql()
 	
-	materiales_criticos <- c("OSP0001142",   # VKOM
+	materiales_criticos <- c(
+									 # "OSP0001142",   # VKOM
 									 "OSP0001440",   # MUFA PARA FIBRA 48 COLOR AZUL
 									 "OSP0000111",   # FIBER OPTIC CABLE ADSS FOR 150 METER
 									 "OSP0001313",   # FIBER OPTIC CABLE ADSS FOR 150 METER GAPS 48 THREADS
 									 "OSP0000193",   # MUFA PARA FIBRA 48 HILOS VERTICAL     
-									 "OSP0000185",   # BANDEJAS PARA MUFAS PLP DE 24 O 48 PARA 12 FIBRAS
+									 # "OSP0000185",   # BANDEJAS PARA MUFAS PLP DE 24 O 48 PARA 12 FIBRAS
 									 "ACC005283")	  # MUFA ONE
 	
 	
@@ -101,8 +103,8 @@
 	
 	
 	correctivo_wide |> 
-		autoplot(vars(bandejas, fibra48, mufa48, vkom)) +
-		geom_smooth() + drako
+		autoplot(vars(fibra48, mufa48)) +
+		geom_smooth(method = "loess", formula = 'y ~ x') + drako
 	
 
 	# sin usar grafico de timetk
@@ -168,13 +170,21 @@
 	lista_materiales |> pluck("correctivo") |>
 		plot_seasonal_diagnostics(date, cantidad, 
 										  .feature_set = "month.lbl", 
-										  # .geom = "violin",
-										  .facet_vars = material, .interactive = F)
+										  .facet_vars = material, 
+										  .interactive = F) +
+		theme(axis.text.x = element_text(angle = 90))
 	
-	# TODO: crear función para iterar sobre el resto de materiales
-	lista_materiales |> pluck("correctivo") |> 
-		filter(material == "fibra48") |> 
-		gg_season(cantidad) + geom_point() + drako
+	
+	
+
+	# Completado
+	lista_materiales |> 
+		map(~ .x |> gg_season(cantidad) +
+			 	geom_point() +
+			 	scale_x_date(date_breaks = "1 month", 
+			 					 labels = date_format("%B")) +
+			 	drako)
+	
 	
 
 	lista_materiales |> pluck("correctivo") |>
@@ -227,23 +237,66 @@
 		drako
 		
 		
-	# TODO: no tiene la opción de facet grid
+	# completo
 	por_cuarto |> 
-		# filter(material == "fibra48") |> 
 		gg_subseries(cantidad) +
 		drako
-		# facet_grid(material ~ ., scales = "free_y") + drako
-		
+
+	
+	# TODO: comprender este gráfico		
 	por_cuarto |> 
-		filter(material == "fibra48") |> 
+		filter(material == "fibra48", mtto == "correctivo") |> 
 		gg_lag(cantidad)
 		
 		
 	por_cuarto |> 
-		filter(material == "fibra48") |> 
+		filter(material == "fibra48", mtto == "correctivo") |> 
 		ACF(cantidad) |> autoplot()
 		
+	# ok
+	por_mes |> 
+		filter(material == "fibra48", mtto == "correctivo") |> 
+		ACF(cantidad) |> autoplot()
 	
+	# TODO: agregar interpretación
+	
+	# gglagplot no funciona con tibbles
+	pmc <- por_mes |> 
+		filter(material == "fibra48", mtto == "correctivo")
+		
+	
+	ts(data = pmc$cantidad, start = c(2017, 1), end = c(2021, 12), frequency = 12) |> 
+		gglagplot(lag = 1, continuous = TRUE)
+	
+	pmc |> gg_lag(cantidad, lags = 1)
+	
+	
+	pmc |> autoplot(.vars = cantidad)
+	pmc |> gg_tsdisplay(y = cantidad)
+	# Feast
+	ACF(pmc) |> autoplot()
+	# existe una mayor auto-correlación a retardos bajos, es decir, a la izquierda
+	# del gráfico. Vemos que todas las autocorrelaciones son positivas, podemos
+	# decir que cada observación se asocia positivamente con su pasado reciente
+	# al menos con estos retardos que observamos
+	
+	# La autocorrelación en lag 1 es la mayor en todos los retardos.
+	
+	# Forecast: da el mismo gráfico
+	forecast::ggAcf(pmc)
+	
+	
+	Las series
+	
+	# cuando la serie es estacional
+	
+	PACF(pmc) |> autoplot()
+
+	
+	forecast::ggAcf(pmc)
+	
+	
+		
 	# ok	
 	por_cuarto %>%
 		features(cantidad, feat_stl) |> 
@@ -252,7 +305,11 @@
 		facet_wrap(vars(material)) + drako
 
 	
-	
+	por_mes %>%
+		features(cantidad, feat_stl) |> 
+		ggplot(aes(x = trend_strength, y = seasonal_strength_year, color = mtto)) +
+		geom_point() +
+		facet_wrap(vars(material)) + drako
 	
 	
 	

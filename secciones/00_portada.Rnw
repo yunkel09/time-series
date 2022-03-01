@@ -1,0 +1,39 @@
+\begin{titlepage}
+
+	\centering
+	\includegraphics[width=0.6\textwidth]{logo_nebrija}\par\vspace{1cm}
+	% \includegraphics[width=0.6\textwidth]{logo_tigo}\par\vspace{1.5cm}
+	{\scshape\huge \maestria \par}
+	\vspace{1.5cm}
+	{\huge\bfseries \titulo\par}
+	\vspace{1.5cm}
+	
+	{\large \autor\par}
+	\vspace{0.2cm}
+	
+	{\normalsize \fecha\par}
+	\vspace{0.2cm}
+	
+\textbf{Resumen}
+
+\justify	
+A través de una prueba de bondad de ajuste determinamos que la variable respuesta \va{income}
+no sigue una distribución normal. El hecho de que la variable respuesta no esté normalmente
+distribuida no limita el uso de un modelo de regresión lineal para representar la relación
+entre las variables \va{income} y \va{age}. \citep{li_are_2012}\footnote{\url{https://bit.ly/35oJ8OS}}.
+Aunque el alcance de este trabajo no incluye encontrar una solución al problema de la
+heterocedasticidad ea nivel de modelado, podemos plantear dos posibles soluciones:
+transformar la variable respuesta utilizando $E(log(Y))$ o aplicar GLM para
+modelar la respuesta como $log(E(Y))$ con log-link
+(ej. \ti{glm(family = gaussian(link = "log"))}).  Desde un punto de vista práctico, esto
+último, es decir, el logaritmo de la media (valor esperado o esperanza E) suele ser más útil.
+
+\vspace{0.5cm}
+
+\textbf{Palabras clave:} Análisis Exploratorio, Análisis Confirmatorio, Modelado
+	
+	\vspace{3cm}
+	\centering
+ \includegraphics[width=0.3\textwidth]{mf}
+
+\end{titlepage}

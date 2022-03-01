@@ -1,0 +1,63 @@
+\chapter{Mandrell Toy Company}
+
+Como preparación para la temporada navideña próxima, Mandrell Toy Company diseñó un nuevo
+muñeco llamado "Freddy". El costo fijo para producirlo es de \$100,000. El costo variable, el
+cual incluye el material, la mano de obra y los costos de envío por muñeco puede estar entre
+30 y 38 dólares.  El precio de venta depende si la competencia saca un juguete similar, en
+cuyo caso el precio de venta seria de 42 dólares y si la competencia no saca su producto, el
+precio de venta seria de 48 dólares.  La probabilidad de que la competencia saque al mercado
+el producto es de 0.35.
+
+La empresa tiene contemplado producir 70,000 unidades. Si la empresa sobre produce los
+muñecos, los excedentes se venderán en enero por medio de un distribuidor que acordó pagar a
+Mandrell \$10 por muñeco. La demanda de juguetes nuevos durante esta temporada es
+extremadamente incierta. Se espera que se vendan 60,000 muñecos con una desviación estándar
+de 15,000.
+
+Determinar la posible distribución de las utilidades obtenidas?
+
+
+\section{Identificar el modelo}
+
+Utilidad Total = Ingreso Total - Costo Total
+
+
+\begin{equation}
+   \bm{Ut = It - Ct}
+   \label{utilidad}
+\end{equation}
+
+<<>>=
+nrep <- 5e4
+@
+
+
+<<>>=
+costo_fijo <- 1e5
+costo_variable <- runif(nrep, 30, 38)
+precio <- sample(c(42, 48), size = nrep, replace = TRUE, prob = c(0.35, 0.65))
+produccion <- 7e4
+demanda <- rnorm(n = nrep, 6e4, 1.5e4)
+liquidacion <- 10
+@
+
+<<>>=
+ingresos <- ifelse(test = demanda < produccion, 
+                   yes  = demanda * precio + (produccion - demanda) * liquidacion,
+                   no   = produccion * precio)
+@
+
+<<>>=
+costos <- costo_fijo + produccion * costo_variable
+@
+
+
+<<>>=
+utilidad <- ingresos - costos
+@
+
+<<>>=
+hist(utilidad)
+@
+
+

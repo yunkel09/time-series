@@ -1,0 +1,6 @@
+% \phantomsection
+\addcontentsline{toc}{chapter}{Bibliografia}
+\bibliography{ts, paquetes}
+\bibliographystyle{apalike}
+
+\clearpage

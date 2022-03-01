@@ -1,0 +1,339 @@
+\chapter{Marco Teórico}
+
+
+\section{Autocorrelación}
+
+La esencia de la \textbf{correlación serial (autocorrelación)} es que deseamos ver cómo se
+afectan entre sí las observaciones secuenciales en una serie temporal. Si podemos encontrar
+patrones (estructura) en estas observaciones, entonces probablemente nos ayudará a mejorar
+nuestros modelos y predicciones.
+
+Algunos \textbf{patrones que hemos detectado en el correlograma} se pueden resumir a
+continuación:
+
+
+ \begin{itemize}[itemsep=1ex]
+ 
+  \item Las tendencias fuertes darán lugar a que las observaciones más recientes tengan un
+  valor más cercano entre sí. El gráfico ACF de las series temporales con \textbf{tendencia}
+  tiende a tener valores positivos en los primeros retardos que disminuyen lentamente a
+  medida que aumentan los retardos.
+  
+  \item Cuando la serie es \textbf{estacional}, en el gráfico ACF las autocorrelaciones serán
+  mayores en los retardos estacionales (es decir, en múltiplos de la frecuencia estacional).
+  Piensa en las vacaciones, cada día festivo tendrá ciertos productos que alcanzan su punto
+  máximo de venta en ese momento cada año y, por lo tanto, la correlación más fuerte será los
+  valores en ese mismo momento cada año.
+  
+  \item Cuando los datos tienen \textbf{tendencia y estacionalidad}, observamos una
+  combinación de los dos efectos anteriores.
+  
+  \item De manera similar a lo que ocurre con la estacionalidad, cuando la serie es
+  \textbf{cíclica}, veremos que en el gráfico ACF las autocorrelaciones serán mayores en la
+  duración promedio del ciclo.
+  
+ \end{itemize}
+
+
+\im{Terminología}
+
+ \begin{itemize}[itemsep=1ex]
+  
+  \item La autocorrelación también se llama \textbf{correlación en serie}. Este tipo de
+  correlación se utiliza para comprender cómo las observaciones de series temporales dependen
+  de los valores de la misma serie en momentos anteriores.
+  
+  \item Las observaciones pasadas de la serie se denominan retrasos o retardos o lag.
+  
+  \item Un proceso es \textbf{ergódico} cuando conforme k se hace más grande, la
+  autocorrelación se hace más pequeña. Es decir, que la dependencia entre variables tiene
+  menos importancia pasado más tiempo.
+  
+  
+ \end{itemize}
+ 
+\subsection{Manchas solares}
+
+A continuación, agrega las órdenes necesarias para generar un gráfico de la serie de tiempo y
+un gráfico de la ACF (correlograma) para los datos sunspot.year que vienen precargados en R.
+
+Recuerda que la ciclicidad induce picos en la duración promedio del ciclo. 
+
+<<>>=
+autoplot(sunspot.year)
+ggAcf(sunspot.year)
+@
+
+Al observar el gráfico ACF mira cómo cambian las correlaciones a medida que aumenta el
+retraso, ¿en qué valor de retraso puedes encontrar la autocorrelación máxima? ¿puedes ver
+alguna estacionalidad, ciclicidad y/o tendencia? ¿Qué comportamiento puedes identificar?
+
+\begin{shaded}
+Primero, vemos en la gráfica que la serie tiene patrones \textbf{cíclicos}. Recordemos que
+un ciclo ocurre cuando los datos exhiben subidas y bajadas que no tienen una frecuencia fija.
+Estas fluctuaciones generalmente se deben a las condiciones económicas y, a menudo, están
+relacionadas con el "ciclo económico". La duración de estas fluctuaciones suele ser de al
+menos 2 años. La serie anual de manchas solares sigue un ciclo de aproximadamente 10-11 años,
+esto causa un pico en el retardo o LAG 10-11 en el gráfico de autocorrelación ACF.
+\end{shaded}
+
+
+\subsection{Muertes accidentales en EE.UU}
+
+La estacionalidad induce picos en los \textbf{retardos estacionales}. Piensa en las
+vacaciones, cada día festivo tendrá ciertos productos que alcanzan su punto máximo en ese
+momento cada año y, por lo tanto, la correlación más fuerte será los valores en ese mismo
+momento cada año.
+
+Utiliza los datos USAccDeaths (precargados en R) sobre mortalidad mensual por accidentes en
+EE.UU. en 1973–1978 y detecta cuál es la estacionalidad de los datos. Para ello, rellena los
+espacios a continuación y ejecuta las órdenes en R.
+ 
+
+<<>>=
+autoplot(USAccDeaths)
+ggAcf(USAccDeaths)
+@
+ 
+¿Qué estacionalidad tienen los datos?
+
+\begin{shaded}
+Observamos un comportamiento estacional cada 6 meses, esto causa un pico en el retardo o LAG
+6 en el correlograma.
+\end{shaded}
+
+
+\subsection{Identificar ACF}
+
+Recuerda que el gráficos de autocorrelación ACF nos ayuda a identificar las características
+de las series temporales.
+
+Con esto en mente, observa los siguientes gráficos y haz coincidir los gráficos ACF que se
+muestran (A-C) con sus gráficos de tiempo correspondientes (1-3).
+
+
+\begin{figure}[H]
+\includegraphics[width = \linewidth]{ts_acf}
+\caption{Interpretación de resultados}
+   \label{fig:iden}
+\end{figure}
+
+\begin{shaded}
+1-B, 2-A y 3-C
+\end{shaded}
+
+
+\section{Estacionaridad}
+
+\subsection{¿Qué es una serie estacionaria?}
+
+En general, se dice que una serie temporal es estacionaria cuando es "estable", es decir,
+cuando se comporta de manera similar de un período de tiempo a otro y sus propiedades no
+dependen del momento en que se observa la serie.
+
+En el contexto de series temporales, la estacionariedad se refiere a: la estabilidad de la
+media (es decir, a que no haya una tendencia) y la estabilidad de la correlación (es decir,
+la estructura de correlación de los datos permanece constante en el tiempo).
+
+Entonces, tenemos los siguientes casos:
+
+ \begin{itemize}[itemsep=1ex]
+  \item \textbf{Serie estacionaria:} si los datos varían alrededor un mismo valor promedio y
+  con la misma variabilidad.
+  \item \textbf{Serie no estacionaria:} si la media y/o la varianza cambian a lo largo del
+  tiempo.
+ \end{itemize}
+ 
+\subsection{¿Por qué nos interesa que la serie sea estacionaria?} 
+
+Cuando una serie temporal es estacionaria, puede ser más fácil modelarla. 
+
+
+Los métodos de modelado estadístico suponen o requieren que las series temporales sean
+estacionarias para ser efectivos.
+
+A grandes rasgos verificar esta propiedad en el estudio de las series de tiempo tiene su
+importancia en los siguientes aspectos.
+
+ \begin{itemize}[itemsep=1ex]
+  \item \textbf{Facilidad de Análisis:} las series estacionarios pueden modelarse con pocos
+  parámetros.
+  \item \textbf{Mejor Entendimiento:} las series temporales tienen distribución estable en el
+  tiempo, es decir, las características estadísticas de nuestra serie de tiempo (media,
+  varianza y autocorrelación) serán las mismas tanto en el futuro como en el pasado.
+  \item \textbf{Ubicuidad:} la estacionariedad nos permite generalizar nuestros resultados al
+  campo de estudio, no sólo limitarnos al problema que estemos analizando.
+ \end{itemize}
+ 
+En el caso de que se incumpla el supuesto de estacionariedad, debemos estacionarizar las
+series de tiempo antes de ajustar un modelo. Veremos más adelante cómo hacerlo.
+
+\subsection{¿Cómo identificar si una serie es estacionaria?}
+
+Podemos evaluar la estacionariedad mediante gráficos y/o pruebas estadísticas. Si la serie es
+estacionaria, los gráficos de tiempo mostrarán que la serie es aproximadamente horizontal
+(aunque es posible algún comportamiento cíclico), con una variación constante (sin tendencia
+ni estacionalidad). Para una serie temporal estacionaria, además el gráfico de
+autocorrelación ACF caerá a cero relativamente rápido, mientras que la ACF de datos no
+estacionarios disminuye lentamente.
+
+\section{Materiales}
+
+
+<<>>=
+con <- conectar_msql()
+@
+
+
+<<>>=
+materiales_criticos <- c("OSP0001440",  # MUFA PARA FIBRA 48 COLOR AZUL
+                         "OSP0000111",  # FIBER OPTIC CABLE ADSS FOR 150 METER
+                         "OSP0001313",  # FIBER OPTIC CABLE ADSS FOR 150 METER GAPS 48 HILOS
+                         "OSP0000193",  # MUFA PARA FIBRA 48 HILOS VERTICAL     
+                         "ACC005283")	 # MUFA ONE
+	
+tipos_mantenimiento <- c(correctivo = "correctivo", preventivo = "preventivo")
+
+mk <- c("Mufa 48 Hilos"           = "mufa48",
+        "Fibra 48 Hilos vano 150" = "fibra48",
+        "Bandejas Mufa de 48"     = "bandejas",
+        "Preformado Fibra 48"     = "vkom")
+@
+
+
+<<>>=
+materiales_raw <- tbl(con, in_schema("md", "descarga_vista")) |> 
+  select(fecha    = fecha_uso, 
+         codigo   = codigo_ebs, 
+         cantidad,
+         tipo     = tipo_ticket,
+         estado   = estado_descarga_item, 
+         ticketid = ticket,
+         material = nombre_informal) |> 
+  filter(codigo %in% materiales_criticos) |> 
+  collect()
+@
+
+
+<<>>=
+materiales_long <- materiales_raw |> 
+  mutate(
+    across(material, recode, !!!mk), 
+    mtto = case_when(
+      str_detect(tipo, "correctivo") ~ "correctivo",
+      TRUE ~ "preventivo"),
+    across(fecha, as.Date)) |> 
+  select(fecha, ticketid, codigo, material, estado, mtto, cantidad) |> 
+  filter(estado != "rechazado")
+@
+
+\subsection{Tsibble}
+
+<<>>=
+por_mes <- materiales_long |>
+ filter(estado == "aplicado") |> 
+ group_by(date = floor_date(fecha, unit = "month"), material) |> 
+ summarise(cantidad = sum(cantidad), .groups = "drop") |> 
+ drop_na() |> 
+ as_tsibble(key = material, index = date, regular = FALSE) |> 
+ filter_index("2017 Jan" ~ "2021 Dec")
+@
+
+   
+<<>>=
+por_mes |> 
+ ggplot(aes(x = date, y = cantidad)) +
+ geom_line() +
+ geom_smooth(method = "loess", formula = 'y ~ x', se = F) +
+ facet_grid(material ~ ., scales = "free_y") +
+ scale_x_date(date_breaks = "1 year", labels = date_format("%Y")) +
+ drako
+@
+
+\subsection{Prueba de autocorrelación}
+
+Aquí comprobamos la nueva forma de hacerlo con los paquetes de `fpp3` en lugar de las
+funciones base.
+
+La prueba de Ljung-Box lo que prueba es la aleatoriedad general en función de una serie de
+retrasos.
+
+\textbf{Hipótesis nula:} las autocorrelaciones, hasta un retardo o lag determinado, son
+iguales a cero.
+
+<<>>=
+Box.test(diff(fpp2::goog200), lag = 10, type = "Ljung-Box")
+@
+
+<<>>=
+# features_by_pkg
+fpp2::goog200 |>
+ as_tsibble() |> 
+ mutate(diferencia = difference(value)) |> 
+ features(diferencia, ljung_box, lag = 10)
+@
+
+Ahora evaluemos nuestra serie
+
+<<>>=
+por_mes |> 
+ group_by(material) |> 
+ mutate(diferencia = difference(cantidad)) |> 
+ features(diferencia, ljung_box, lag = 10)
+
+@
+
+
+
+<<>>=
+aug %>% features(.innov, ljung_box, lag = 10, dof = 0)
+@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
