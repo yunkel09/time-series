@@ -177,13 +177,29 @@ ni estacionalidad). Para una serie temporal estacionaria, además el gráfico de
 autocorrelación ACF caerá a cero relativamente rápido, mientras que la ACF de datos no
 estacionarios disminuye lentamente.
 
-\section{Materiales}
+\section{Caso de Uso}
 
+Para poder ver como los conceptos se van aplicando, consideremos un caso de uso en el que
+analizaremos las series de tiempo de dos materiales que se utilizan con frecuencia en PLEX.
+El objetivo final es probar varios modelos y realizar un pronóstico de consumo para un
+horizonte adecuado. Las preguntas de investigación estarán relacionados a la presencia de
+valores atípicos y la cantidad de datos necesaria para poder realizar un buen pronóstico. 
+También es importante destacar que el consumo de estos materiales se divide en dos grandes
+rubros, los cuales son el mantenimiento preventivo y el correctivo.  Una interrogante será
+si las series deben pronosticarse por separado en vista de que es posible de que los procesos
+implícitos que generan cada serie son diferentes.
+
+El primer paso es conectarnos a nuestra base de datos para extraer la tabla donde se
+almacenan los datos históricos de consumo.
 
 <<>>=
 con <- conectar_msql()
 @
 
+Debido a que hay muchos códigos que se utilizan para identificar un mismo tipo de material,
+será necesario realizar una preparación.  Comencemos definiendo algunos parámetros para
+poder descargar solo el material necesario, delegando de esta forma al servidor la tarea de
+realizar la consulta y entregarnos lo que necesitamos.
 
 <<>>=
 materiales_criticos <- c("OSP0001440",  # MUFA PARA FIBRA 48 COLOR AZUL
@@ -191,15 +207,24 @@ materiales_criticos <- c("OSP0001440",  # MUFA PARA FIBRA 48 COLOR AZUL
                          "OSP0001313",  # FIBER OPTIC CABLE ADSS FOR 150 METER GAPS 48 HILOS
                          "OSP0000193",  # MUFA PARA FIBRA 48 HILOS VERTICAL     
                          "ACC005283")	 # MUFA ONE
-	
-tipos_mantenimiento <- c(correctivo = "correctivo", preventivo = "preventivo")
+@
 
+Para cada tipo de material, hay dos tipos de consumo:
+
+<<>>=
+tipos_mantenimiento <- c(correctivo = "correctivo", preventivo = "preventivo")
+@
+
+Creemos una lista que nos permita acortar los nombres informales de los materiales:
+
+<<>>=
 mk <- c("Mufa 48 Hilos"           = "mufa48",
         "Fibra 48 Hilos vano 150" = "fibra48",
         "Bandejas Mufa de 48"     = "bandejas",
         "Preformado Fibra 48"     = "vkom")
 @
 
+\subsection{Extracción}
 
 <<>>=
 materiales_raw <- tbl(con, in_schema("md", "descarga_vista")) |> 
@@ -214,6 +239,19 @@ materiales_raw <- tbl(con, in_schema("md", "descarga_vista")) |>
   collect()
 @
 
+<<>>=
+materiales_raw |> slice_sample(n = 5) |> select(-codigo) |> tabla("Detalle de Materiales")
+@
+
+
+<<include=FALSE>>=
+dbDisconnect(con)
+@
+
+\subsection{Preparación}
+
+Trabajaremos los datos en formato \emph{tidy}, por lo que es necesario preparar esto y
+guardarlo en un objeto por separado.
 
 <<>>=
 materiales_long <- materiales_raw |> 
@@ -227,7 +265,15 @@ materiales_long <- materiales_raw |>
   filter(estado != "rechazado")
 @
 
-\subsection{Tsibble}
+<<>>=
+materiales_long |> slice_sample(n = 5) |> tabla("Materiales Tidy")
+@
+
+Vemos en la tabla que ahora los materiales están en un formato largo, pero aun están con
+intervalos irregulares. Lo siguiente es agrupar y sumarizar los datos por mes para poder
+regularizar la serie a la vez que convertimos este tibble en un \texttt{tsibble}.
+
+\subsection{Transformación}
 
 <<>>=
 por_mes <- materiales_long |>
@@ -235,20 +281,47 @@ por_mes <- materiales_long |>
  group_by(date = floor_date(fecha, unit = "month"), material) |> 
  summarise(cantidad = sum(cantidad), .groups = "drop") |> 
  drop_na() |> 
- as_tsibble(key = material, index = date, regular = FALSE) |> 
+ mutate(fecha = yearmonth(date), .before = 1) |> 
+ as_tsibble(key = material, index = fecha) |> 
  filter_index("2017 Jan" ~ "2021 Dec")
 @
 
-   
 <<>>=
+por_mes |> as_tibble() |> select(-date) |> slice_sample(n = 5) |> tabla("Agrupado por Mes")
+@
+
+
+\begin{figure}[H]
+<<fig.width=8, fig.asp=1>>=
 por_mes |> 
  ggplot(aes(x = date, y = cantidad)) +
  geom_line() +
  geom_smooth(method = "loess", formula = 'y ~ x', se = F) +
+ stat_valleys(geom = "point", span = 13, color = "white", 
+              position = position_nudge_keep(x = 0, y = -15)) +
+ stat_peaks(geom   = "point", span = 11, color = "red") +
+ stat_peaks(geom   = "text", span = 11, color = "red", x.label.fmt = "%b", vjust = -0.8,
+            size = 3, position = position_nudge_keep(x = 0, y = 3)) +
+ stat_valleys(geom = "text", span = 13, color = "blue", vjust = 1.8, hjust = 0.5,
+              x.label.fmt = "%b", size = 3) +
+ stat_valleys(geom = "point", span = 13, color = "blue") +
  facet_grid(material ~ ., scales = "free_y") +
- scale_x_date(date_breaks = "1 year", labels = date_format("%Y")) +
- drako
+ scale_x_date(date_breaks = "6 month", labels = date_format("%Y-%b")) + drako
 @
+\caption{Interpretación de resultados}
+   \label{fig:serie}
+\end{figure}
+
+\begin{shaded}
+En el gráfico \ref{fig:serie} podemos ver una serie consistente de 260 semanas de datos
+históricos en la que se observa una tendencia a la alza a partir de julio de 2018. Vemos que
+la serie es no estacionaria en la media. Parece haber una correlación entre el consumo de
+fibra y de mufas.  Esto sucede debido a que cada porción de fibra que se utiliza para
+reparaciones requiere por lo general MUFAS para realizar los empalmes. También es probable
+que exista una estacionalidad para todos los años en los meses de marzo y septiembre, con
+la excepción del 2017 y 2018 en marzo.
+\end{shaded}
+
 
 \subsection{Prueba de autocorrelación}
 
@@ -273,22 +346,39 @@ fpp2::goog200 |>
  features(diferencia, ljung_box, lag = 10)
 @
 
+Si el p-valor es mayor al nivel de significancia decimos que la serie es estacionaria, como
+lo es en este caso.
+
+\subsection{Materiales}
+
 Ahora evaluemos nuestra serie
+
+\begin{figure}[H]
+<<fig.width=8, fig.asp=1>>=
+por_mes |>
+  filter(material == "fibra48") |> 
+  gg_tsdisplay(y = cantidad)
+@
+\caption{Interpretación de resultados}
+   \label{fig:corre}
+\end{figure}
+
+Sabemos que para una serie estacionaria el correlograma caerá a cero relativamente rápido con
+un decaimiento exponencial. Para una serie no estacionaria EL ACF disminuye lentamente, un
+decaimiento lento con una persistencia. Además, para datos no estacionarios, el valor de la
+primera autocorrelación es a menudo grande.
 
 <<>>=
 por_mes |> 
  group_by(material) |> 
  mutate(diferencia = difference(cantidad)) |> 
  features(diferencia, ljung_box, lag = 10)
-
 @
 
-
-
-<<>>=
-aug %>% features(.innov, ljung_box, lag = 10, dof = 0)
-@
-
+\begin{shaded}
+Debido a que el p-valor es menor al nivel de significancia, decimos que la serie no es
+estacionaria para ninguno de los dos materiales.
+\end{shaded}
 
 
 

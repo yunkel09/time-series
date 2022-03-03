@@ -395,6 +395,9 @@ knit_hooks$set(document = function(x) {sub('\\usepackage[]{color}',
  import::from(conectigo, cargar_fuentes, conectar_msql)
  import::from(lubridate, .except = c("intersect", "setdiff", "union"))
  import::from(forecast, ggAcf)
+ import::from(DBI, dbDisconnect)
+ import::from(ggpmisc, stat_peaks, stat_valleys, stat_correlation)
+ import::from(ggpp, position_nudge_keep)
  import::from(dbplyr, in_schema)
 
  # cargar paquetes en el que sabemos necesitamos todas las opciones
@@ -440,13 +443,14 @@ theme_set(drako)
 
 % aquí va la portada
 
-
 % \renewcommand{\contentsname}{Índice}
 % \tableofcontents
-% 
+
+
 % \addtocontents{toc}{\protect\thispagestyle{empty}} % quitar número de página 
 \pagenumbering{arabic}
 \setcounter{page}{1} % establecer pag 1
+
 
 % aquí van las secciones
  
