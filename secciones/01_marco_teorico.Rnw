@@ -1,5 +1,160 @@
 \chapter{Marco Teórico}
 
+\section{Estacionalidad}
+
+El componente estacional consiste en efectos que son razonablemente estables con respecto al
+tiempo, la dirección y la magnitud. Surge de influencias sistemáticas relacionadas con el
+calendario.
+
+También incluye efectos sistemáticos relacionados con el calendario que no son estables en su
+calendario anual o que son causados por variaciones en el calendario de un año a otro, tales
+como: la Navidad, el inicio y fin del curso escolar, el número de días por mes, las
+vacaciones y días festivos que ocurren cada año pero pueden variar en el calendario.
+
+\im{¿Cómo identificamos la estacionalidad?}
+ 
+La estacionalidad en una serie temporal puede identificarse mediante picos y valles
+regularmente espaciados que tienen una dirección constante y aproximadamente la misma
+magnitud cada año, en relación con la tendencia.
+ 
+\im{¿Qué es el ajuste estacional y por qué lo necesitamos?}
+
+El ajuste estacional es el proceso de estimar y luego eliminar de una serie de tiempo las
+influencias que son sistemáticas y relacionadas con el calendario. Los datos observados deben
+ajustarse estacionalmente ya que los efectos estacionales pueden ocultar tanto el verdadero
+movimiento subyacente en la serie, como ciertas características no estacionales que pueden
+ser de interés para los analistas.
+ 
+\im{Manchas solares}
+
+A continuación, agrega las órdenes necesarias para generar un gráfico de la serie de tiempo y
+un gráfico de la ACF (correlograma) para los datos sunspot.year que vienen precargados en R.
+
+Recuerda que la ciclicidad induce picos en la duración promedio del ciclo. 
+
+<<>>=
+autoplot(sunspot.year)
+ggAcf(sunspot.year)
+@
+
+Al observar el gráfico ACF mira cómo cambian las correlaciones a medida que aumenta el
+retraso, ¿en qué valor de retraso puedes encontrar la autocorrelación máxima? ¿puedes ver
+alguna estacionalidad, ciclicidad y/o tendencia? ¿Qué comportamiento puedes identificar?
+
+\begin{shaded}
+Primero, vemos en la gráfica que la serie tiene patrones \textbf{cíclicos}. Recordemos que
+un ciclo ocurre cuando los datos exhiben subidas y bajadas que no tienen una frecuencia fija.
+Estas fluctuaciones generalmente se deben a las condiciones económicas y, a menudo, están
+relacionadas con el "ciclo económico". La duración de estas fluctuaciones suele ser de al
+menos 2 años. La serie anual de manchas solares sigue un ciclo de aproximadamente 10-11 años,
+esto causa un pico en el retardo o LAG 10-11 en el gráfico de autocorrelación ACF.
+\end{shaded}
+
+
+\im{Muertes accidentales en EE.UU}
+
+La estacionalidad induce picos en los \textbf{retardos estacionales}. Piensa en las
+vacaciones, cada día festivo tendrá ciertos productos que alcanzan su punto máximo en ese
+momento cada año y, por lo tanto, la correlación más fuerte será los valores en ese mismo
+momento cada año.
+
+Utiliza los datos USAccDeaths (precargados en R) sobre mortalidad mensual por accidentes en
+EE.UU. en 1973–1978 y detecta cuál es la estacionalidad de los datos. Para ello, rellena los
+espacios a continuación y ejecuta las órdenes en R.
+ 
+
+<<>>=
+autoplot(USAccDeaths)
+ggAcf(USAccDeaths)
+@
+ 
+¿Qué estacionalidad tienen los datos?
+
+\begin{shaded}
+Observamos un comportamiento estacional cada 6 meses, esto causa un pico en el retardo o LAG
+6 en el correlograma.
+\end{shaded}
+
+
+\subsection{Identificar ACF}
+
+Recuerda que el gráficos de autocorrelación ACF nos ayuda a identificar las características
+de las series temporales.
+
+Con esto en mente, observa los siguientes gráficos y haz coincidir los gráficos ACF que se
+muestran (A-C) con sus gráficos de tiempo correspondientes (1-3).
+
+
+\begin{figure}[H]
+\includegraphics[width = \linewidth]{ts_acf}
+\caption{Interpretación de resultados}
+   \label{fig:iden}
+\end{figure}
+
+\begin{shaded}
+1-B, 2-A y 3-C
+\end{shaded}
+
+
+\section{Estacionariedad}
+
+\im{¿Qué es una serie estacionaria?}
+
+En general, se dice que una serie temporal es estacionaria cuando es "estable", es decir,
+cuando se comporta de manera similar de un período de tiempo a otro y sus propiedades no
+dependen del momento en que se observa la serie.
+
+En el contexto de series temporales, la estacionariedad se refiere a: la estabilidad de la
+media (es decir, a que no haya una tendencia) y la estabilidad de la correlación (es decir,
+la estructura de correlación de los datos permanece constante en el tiempo).
+
+Entonces, tenemos los siguientes casos:
+
+ \begin{itemize}[itemsep=1ex]
+  \item \textbf{Serie estacionaria:} si los datos varían alrededor un mismo valor promedio y
+  con la misma variabilidad.
+  \item \textbf{Serie no estacionaria:} si la media y/o la varianza cambian a lo largo del
+  tiempo.
+ \end{itemize}
+ 
+\im{¿Por qué nos interesa que la serie sea estacionaria?} 
+
+Cuando una serie temporal es estacionaria, puede ser más fácil modelarla. 
+
+
+Los métodos de modelado estadístico suponen o requieren que las series temporales sean
+estacionarias para ser efectivos.
+
+A grandes rasgos verificar esta propiedad en el estudio de las series de tiempo tiene su
+importancia en los siguientes aspectos.
+
+ \begin{itemize}[itemsep=1ex]
+  \item \textbf{Facilidad de Análisis:} las series estacionarios pueden modelarse con pocos
+  parámetros.
+  \item \textbf{Mejor Entendimiento:} las series temporales tienen distribución estable en el
+  tiempo, es decir, las características estadísticas de nuestra serie de tiempo (media,
+  varianza y autocorrelación) serán las mismas tanto en el futuro como en el pasado.
+  \item \textbf{Ubicuidad:} la estacionariedad nos permite generalizar nuestros resultados al
+  campo de estudio, no sólo limitarnos al problema que estemos analizando.
+ \end{itemize}
+ 
+En el caso de que se incumpla el supuesto de estacionariedad, debemos estacionarizar las
+series de tiempo antes de ajustar un modelo. Veremos más adelante cómo hacerlo.
+
+\im{¿Cómo identificar si una serie es estacionaria?}
+
+Podemos evaluar la estacionariedad mediante gráficos y/o pruebas estadísticas. Si la serie es
+estacionaria, los gráficos de tiempo mostrarán que la serie es aproximadamente horizontal
+(aunque es posible algún comportamiento cíclico), con una variación constante (sin tendencia
+ni estacionalidad). Para una serie temporal estacionaria, además el gráfico de
+autocorrelación ACF caerá a cero relativamente rápido, mientras que la ACF de datos no
+estacionarios disminuye lentamente.
+
+Para evaluar la estacionariedad en conjuntos de datos donde las tendencias y las
+estacionalidades son difíciles de ver, puede ser bastante útil evaluar la autocorrelación de
+la serie temporal. Podemos entonces observar el correlograma de la serie temporal para
+evaluar su estacionariedad.
+
 
 \section{Autocorrelación}
 
@@ -49,133 +204,51 @@ continuación:
   autocorrelación se hace más pequeña. Es decir, que la dependencia entre variables tiene
   menos importancia pasado más tiempo.
   
-  
  \end{itemize}
- 
-\subsection{Manchas solares}
 
-A continuación, agrega las órdenes necesarias para generar un gráfico de la serie de tiempo y
-un gráfico de la ACF (correlograma) para los datos sunspot.year que vienen precargados en R.
+\section{Transformaciones}
 
-Recuerda que la ciclicidad induce picos en la duración promedio del ciclo. 
+Hemos visto qué es la estacionariedad y las ventajas que presentan las series estacionarias
+cuando queremos modelar y predecir. Sin embargo, \textbf{las series temporales generalmente
+no son estacionarias.}
 
-<<>>=
-autoplot(sunspot.year)
-ggAcf(sunspot.year)
-@
+\im{¿Cómo hacer una serie temporal estacionaria?}
 
-Al observar el gráfico ACF mira cómo cambian las correlaciones a medida que aumenta el
-retraso, ¿en qué valor de retraso puedes encontrar la autocorrelación máxima? ¿puedes ver
-alguna estacionalidad, ciclicidad y/o tendencia? ¿Qué comportamiento puedes identificar?
+A menos que tu serie temporal sea estacionaria, no puedes construir un modelo de serie
+temporal. Esta es la razón por la que estudiamos la estacionariedad antes de hablar de
+modelos de series temporales.
 
-\begin{shaded}
-Primero, vemos en la gráfica que la serie tiene patrones \textbf{cíclicos}. Recordemos que
-un ciclo ocurre cuando los datos exhiben subidas y bajadas que no tienen una frecuencia fija.
-Estas fluctuaciones generalmente se deben a las condiciones económicas y, a menudo, están
-relacionadas con el "ciclo económico". La duración de estas fluctuaciones suele ser de al
-menos 2 años. La serie anual de manchas solares sigue un ciclo de aproximadamente 10-11 años,
-esto causa un pico en el retardo o LAG 10-11 en el gráfico de autocorrelación ACF.
-\end{shaded}
+Las series temporales con tendencias, o con estacionalidad, no son estacionarias: la
+tendencia y la estacionalidad afectarán el valor de la serie temporal en diferentes momentos.
 
+En los casos en que se incumple el supuesto de estacionariedad, el primer requisito es
+estacionarizar la serie de tiempo. Hay múltiples formas de hacer que tus datos sean
+estacionarios. Por ejemplo, podemos transformar la serie tomando diferencias (anuales o
+estacionales) y logaritmos para estacionarizar una serie temporal.
 
-\subsection{Muertes accidentales en EE.UU}
+Cuando se aplican tanto las diferencias estacionales como las diferencias regulares (o
+diferencias primeras), no importa qué se haga primero: el resultado será el mismo. Sin
+embargo, si los datos tienen un patrón estacional fuerte, \textbf{recomendamos que la
+diferenciación estacional se haga primero}, porque la serie resultante a veces será
+estacionaria y no habrá necesidad de una primera diferencia adicional. Si primero se hace la
+diferenciación, todavía habrá presente estacionalidad.
 
-La estacionalidad induce picos en los \textbf{retardos estacionales}. Piensa en las
-vacaciones, cada día festivo tendrá ciertos productos que alcanzan su punto máximo en ese
-momento cada año y, por lo tanto, la correlación más fuerte será los valores en ese mismo
-momento cada año.
+\im{Diferencia estacional}
 
-Utiliza los datos USAccDeaths (precargados en R) sobre mortalidad mensual por accidentes en
-EE.UU. en 1973–1978 y detecta cuál es la estacionalidad de los datos. Para ello, rellena los
-espacios a continuación y ejecuta las órdenes en R.
- 
+Una forma de \textbf{desestacionalizar} es tomar una \textbf{diferencia estacional}. Es
+decir, podemos calcular la diferencia entre el valor de la serie en un mes del año respecto
+al mismo mes del año anterior. Recuerda que siempre se pierde el primer dato de la serie en
+la diferenciación.
 
-<<>>=
-autoplot(USAccDeaths)
-ggAcf(USAccDeaths)
-@
- 
-¿Qué estacionalidad tienen los datos?
+\begin{center}
+\ti{diff(x, lag = 1, differences = 1, ...)}
+\end{center}
 
-\begin{shaded}
-Observamos un comportamiento estacional cada 6 meses, esto causa un pico en el retardo o LAG
-6 en el correlograma.
-\end{shaded}
+La función diff() permite especificar el retardo (lag) y el orden (differences) de las
+diferencias. El argumento lag especifica si tomamos diferencias en 1 tiempo o más (por
+defecto es 1), mientras que el argumento differences refiere a si tomamos diferencias anuales
+(1), mensuales (12), etc..
 
-
-\subsection{Identificar ACF}
-
-Recuerda que el gráficos de autocorrelación ACF nos ayuda a identificar las características
-de las series temporales.
-
-Con esto en mente, observa los siguientes gráficos y haz coincidir los gráficos ACF que se
-muestran (A-C) con sus gráficos de tiempo correspondientes (1-3).
-
-
-\begin{figure}[H]
-\includegraphics[width = \linewidth]{ts_acf}
-\caption{Interpretación de resultados}
-   \label{fig:iden}
-\end{figure}
-
-\begin{shaded}
-1-B, 2-A y 3-C
-\end{shaded}
-
-
-\section{Estacionaridad}
-
-\subsection{¿Qué es una serie estacionaria?}
-
-En general, se dice que una serie temporal es estacionaria cuando es "estable", es decir,
-cuando se comporta de manera similar de un período de tiempo a otro y sus propiedades no
-dependen del momento en que se observa la serie.
-
-En el contexto de series temporales, la estacionariedad se refiere a: la estabilidad de la
-media (es decir, a que no haya una tendencia) y la estabilidad de la correlación (es decir,
-la estructura de correlación de los datos permanece constante en el tiempo).
-
-Entonces, tenemos los siguientes casos:
-
- \begin{itemize}[itemsep=1ex]
-  \item \textbf{Serie estacionaria:} si los datos varían alrededor un mismo valor promedio y
-  con la misma variabilidad.
-  \item \textbf{Serie no estacionaria:} si la media y/o la varianza cambian a lo largo del
-  tiempo.
- \end{itemize}
- 
-\subsection{¿Por qué nos interesa que la serie sea estacionaria?} 
-
-Cuando una serie temporal es estacionaria, puede ser más fácil modelarla. 
-
-
-Los métodos de modelado estadístico suponen o requieren que las series temporales sean
-estacionarias para ser efectivos.
-
-A grandes rasgos verificar esta propiedad en el estudio de las series de tiempo tiene su
-importancia en los siguientes aspectos.
-
- \begin{itemize}[itemsep=1ex]
-  \item \textbf{Facilidad de Análisis:} las series estacionarios pueden modelarse con pocos
-  parámetros.
-  \item \textbf{Mejor Entendimiento:} las series temporales tienen distribución estable en el
-  tiempo, es decir, las características estadísticas de nuestra serie de tiempo (media,
-  varianza y autocorrelación) serán las mismas tanto en el futuro como en el pasado.
-  \item \textbf{Ubicuidad:} la estacionariedad nos permite generalizar nuestros resultados al
-  campo de estudio, no sólo limitarnos al problema que estemos analizando.
- \end{itemize}
- 
-En el caso de que se incumpla el supuesto de estacionariedad, debemos estacionarizar las
-series de tiempo antes de ajustar un modelo. Veremos más adelante cómo hacerlo.
-
-\subsection{¿Cómo identificar si una serie es estacionaria?}
-
-Podemos evaluar la estacionariedad mediante gráficos y/o pruebas estadísticas. Si la serie es
-estacionaria, los gráficos de tiempo mostrarán que la serie es aproximadamente horizontal
-(aunque es posible algún comportamiento cíclico), con una variación constante (sin tendencia
-ni estacionalidad). Para una serie temporal estacionaria, además el gráfico de
-autocorrelación ACF caerá a cero relativamente rápido, mientras que la ACF de datos no
-estacionarios disminuye lentamente.
 
 \section{Caso de Uso}
 
@@ -273,8 +346,6 @@ Vemos en la tabla que ahora los materiales están en un formato largo, pero aun 
 intervalos irregulares. Lo siguiente es agrupar y sumarizar los datos por mes para poder
 regularizar la serie a la vez que convertimos este tibble en un \texttt{tsibble}.
 
-\subsection{Transformación}
-
 <<>>=
 por_mes <- materiales_long |>
  filter(estado == "aplicado") |> 
@@ -290,6 +361,7 @@ por_mes <- materiales_long |>
 por_mes |> as_tibble() |> select(-date) |> slice_sample(n = 5) |> tabla("Agrupado por Mes")
 @
 
+\subsection{Gráfica}
 
 \begin{figure}[H]
 <<fig.width=8, fig.asp=1>>=
@@ -314,19 +386,26 @@ por_mes |>
 
 \begin{shaded}
 En el gráfico \ref{fig:serie} podemos ver una serie consistente de 260 semanas de datos
-históricos en la que se observa una tendencia a la alza a partir de julio de 2018. Vemos que
-la serie es no estacionaria en la media. Parece haber una correlación entre el consumo de
-fibra y de mufas.  Esto sucede debido a que cada porción de fibra que se utiliza para
-reparaciones requiere por lo general MUFAS para realizar los empalmes. También es probable
-que exista una estacionalidad para todos los años en los meses de marzo y septiembre, con
-la excepción del 2017 y 2018 en marzo.
+históricos en la que se observa una tendencia a la alza a partir de julio de 2018. Al
+observar una tendencia creciente decimos que esta serie es \textbf{no estacionaria en la
+media.} En el caso de las mufas, adicional a la tendencia, vemos que la variabilidad se
+modifica con el tiempo, por lo que esta serie es \textbf{no estacionaria en la varianza.}
+Los picos y valles no se repiten a lo largo de los años de forma constante, así que
+deberemos evaluar la estacionalidad de manera más formal o con técnicas de descomposición.
+\end{shaded}
+
+\begin{shaded}
+Parece haber una correlación entre el consumo de fibra y de mufas. Esto sucede
+debido a que cada porción de fibra que se utiliza para reparaciones requiere por lo general
+MUFAS para realizar los empalmes. También es probable que exista una estacionalidad para
+todos los años en los meses de marzo y septiembre, con la excepción del 2017 y 2018 en marzo.
 \end{shaded}
 
 
-\subsection{Prueba de autocorrelación}
+\subsection{Autocorrelación}
 
-Aquí comprobamos la nueva forma de hacerlo con los paquetes de `fpp3` en lugar de las
-funciones base.
+Aquí comprobamos la nueva forma de hacerlo con los paquetes de $\left \{fpp3 \right \}$ en
+lugar de las funciones base.
 
 La prueba de Ljung-Box lo que prueba es la aleatoriedad general en función de una serie de
 retrasos.
@@ -339,25 +418,21 @@ Box.test(diff(fpp2::goog200), lag = 10, type = "Ljung-Box")
 @
 
 <<>>=
-# features_by_pkg
 fpp2::goog200 |>
  as_tsibble() |> 
  mutate(diferencia = difference(value)) |> 
- features(diferencia, ljung_box, lag = 10)
+ features(diferencia, ljung_box, lag = 10) |> 
+ tabla("Ljung-Box para datos de prueba")
 @
 
 Si el p-valor es mayor al nivel de significancia decimos que la serie es estacionaria, como
 lo es en este caso.
 
-\subsection{Materiales}
-
 Ahora evaluemos nuestra serie
 
 \begin{figure}[H]
-<<fig.width=8, fig.asp=1>>=
-por_mes |>
-  filter(material == "fibra48") |> 
-  gg_tsdisplay(y = cantidad)
+<<>>=
+por_mes |> group_by(material) |> ACF(cantidad) |> autoplot()
 @
 \caption{Interpretación de resultados}
    \label{fig:corre}
@@ -368,23 +443,54 @@ un decaimiento exponencial. Para una serie no estacionaria EL ACF disminuye lent
 decaimiento lento con una persistencia. Además, para datos no estacionarios, el valor de la
 primera autocorrelación es a menudo grande.
 
+\begin{shaded}
+Hay más información en el gráfico ACF que en el diagrama de serie de tiempo simple de la
+figura \ref{fig:serie}. Aquí vemos que, para el caso de la fibra48 el primero, tercero y
+cuarto retardo superan claramente la línea azul, lo que sugiere que es posible alguna señal
+en este componente de la serie de tiempo que se puede utilizar para crear un modelo.
+\end{shaded}
+
+Ahora realizamos la prueba de Ljung-Box para evaluar la "aleatoriedad general" en las
+primeras 17 autocorrelaciones de retraso.
+
 <<>>=
 por_mes |> 
  group_by(material) |> 
  mutate(diferencia = difference(cantidad)) |> 
- features(diferencia, ljung_box, lag = 10)
+ features(diferencia, ljung_box, lag = 17) |> 
+ tabla("Prueba de autocorrelación")
 @
 
 \begin{shaded}
-Debido a que el p-valor es menor al nivel de significancia, decimos que la serie no es
-estacionaria para ninguno de los dos materiales.
+Debido a que el p-valor es menor al nivel de significancia, decimos que la serie \textbf{no
+es estacionaria} para ninguno de los dos materiales. El p-valor de la prueba es
+estadísticamente significativo ($p < .001$), por lo tanto, esto respalda lo que hemos visto
+en el gráfico ACF de la figura \ref{fig:corre} anterior, la serie temporal muestra un patrón
+de comportamiento particular que podemos utilizar para su modelado.
 \end{shaded}
 
+\subsection{Tranformación}
 
+Para los datos mensuales de materiales vamos a tomar diferencias estacionales sobre la serie
+en logaritmo. Los datos se transforman primero usando logaritmos. \textbf{El logaritmo
+natural puede linearizar una tendencia de crecimiento rápido, una tendencia de aumento
+exponencial.} La resstricción es que todos los valores deben ser positivos.
 
-
-
-
+<<>>=
+por_mes |> 
+  filter(material == "fibra48") |> 
+  mutate(
+    log_cantidad = log(cantidad), 
+    diferencia = difference(log_cantidad, 12)) |> 
+  pivot_longer(cols = cantidad:diferencia, 
+               names_to = "tipo",
+               values_to = "cantidad_d") |> 
+  as_tibble() |> 
+  mutate(tipo = fct_inorder(tipo)) |>    
+  ggplot(aes(x = fecha, y = cantidad_d)) +
+  geom_line() +
+  facet_grid(vars(tipo), scales = "free_y")
+@
 
 
 
