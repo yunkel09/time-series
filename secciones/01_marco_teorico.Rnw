@@ -1,5 +1,40 @@
 \chapter{Marco Teórico}
 
+<<>>=
+graficar <- function(.df, vector, .brk) {
+ .df |> 
+  ggplot(aes(x = date, y = {{ vector }})) +
+  geom_line() +
+  geom_smooth(method = "loess", formula = 'y ~ x', se = F, size = 0.5) +
+  facet_grid(rows = vars({{ .brk }}), scales = "free_y") +
+  scale_x_date(date_breaks = "6 month", labels = date_format("%Y-%b")) +
+  drako
+}
+@
+
+<<>>=
+agregar_info <- function(gg_object) {
+ gg_object +
+  stat_peaks(geom = "point",   span = 11, color = "red",  size = 0.7) +
+  stat_valleys(geom = "point", span = 11, color = "blue", size = 0.7) +
+  stat_peaks(geom        = "text",
+             span        = 11,
+             color       = "red",
+             vjust       = 0,
+             hjust       = -0.5,
+             x.label.fmt = "%b",
+             size = 1.5) +
+  stat_valleys(geom        = "text",
+               span        = 11,
+               color       = "blue",
+               vjust       = 0,
+               hjust       = -1,
+               x.label.fmt = "%b",
+               size = 1.5)
+}
+@
+
+
 \section{Estacionalidad}
 
 El componente estacional consiste en efectos que son razonablemente estables con respecto al
@@ -249,6 +284,24 @@ diferencias. El argumento lag especifica si tomamos diferencias en 1 tiempo o m�
 defecto es 1), mientras que el argumento differences refiere a si tomamos diferencias anuales
 (1), mensuales (12), etc..
 
+\im{Cálculo de la tasa de cambio de la serie}
+
+\begin{center}
+\textbf{Primera diferencia del logaritmo = cambio porcentual}
+\end{center}
+
+Cuando aplicamos el logaritmo junto con la diferenciación de la serie pasamos de tener
+diferencias absolutas a obtener diferencias relativas (es decir, porcentajes). Por tanto, la
+serie diff(log(x)) representa el cambio porcentual en "x" de un período a otro.
+
+Esto es porque el cambio porcentual en "x" en el período "t", definido como (X(t) -X(t-1)) /
+X(t-1), es aproximadamente igual a log(X(t)) - log(X(t-1)), cuando el cambio porcentual
+es pequeño. En términos estadísticos, esto significa que es virtualmente idéntico a diff(
+log(x)).
+
+Esta transformación nos permite comparar "manzanas con manzanas" entre acciones, índices o
+cualquier otra serie.
+
 
 \section{Caso de Uso}
 
@@ -364,21 +417,8 @@ por_mes |> as_tibble() |> select(-date) |> slice_sample(n = 5) |> tabla("Agrupad
 \subsection{Gráfica}
 
 \begin{figure}[H]
-<<fig.width=8, fig.asp=1>>=
-por_mes |> 
- ggplot(aes(x = date, y = cantidad)) +
- geom_line() +
- geom_smooth(method = "loess", formula = 'y ~ x', se = F) +
- stat_valleys(geom = "point", span = 13, color = "white", 
-              position = position_nudge_keep(x = 0, y = -15)) +
- stat_peaks(geom   = "point", span = 11, color = "red") +
- stat_peaks(geom   = "text", span = 11, color = "red", x.label.fmt = "%b", vjust = -0.8,
-            size = 3, position = position_nudge_keep(x = 0, y = 3)) +
- stat_valleys(geom = "text", span = 13, color = "blue", vjust = 1.8, hjust = 0.5,
-              x.label.fmt = "%b", size = 3) +
- stat_valleys(geom = "point", span = 13, color = "blue") +
- facet_grid(material ~ ., scales = "free_y") +
- scale_x_date(date_breaks = "6 month", labels = date_format("%Y-%b")) + drako
+<<>>=
+por_mes |> graficar(cantidad, .brk = material) |> agregar_info()
 @
 \caption{Interpretación de resultados}
    \label{fig:serie}
@@ -462,11 +502,10 @@ por_mes |>
 @
 
 \begin{shaded}
-Debido a que el p-valor es menor al nivel de significancia, decimos que la serie \textbf{no
-es estacionaria} para ninguno de los dos materiales. El p-valor de la prueba es
-estadísticamente significativo ($p < .001$), por lo tanto, esto respalda lo que hemos visto
-en el gráfico ACF de la figura \ref{fig:corre} anterior, la serie temporal muestra un patrón
-de comportamiento particular que podemos utilizar para su modelado.
+Como ($p < .05$), rechazamos la hipótesis nula y por tanto existe correlación para algún
+retardo menor que 17. Existe autocorrelación en la serie temporal, lo cual es consistente con
+lo que vemos en el gráfico ACF de la figura \ref{fig:corre} anterior, la serie temporal
+muestra un patrón de comportamiento particular que podemos utilizar para su modelado.
 \end{shaded}
 
 \subsection{Tranformación}
@@ -474,31 +513,62 @@ de comportamiento particular que podemos utilizar para su modelado.
 Para los datos mensuales de materiales vamos a tomar diferencias estacionales sobre la serie
 en logaritmo. Los datos se transforman primero usando logaritmos. \textbf{El logaritmo
 natural puede linearizar una tendencia de crecimiento rápido, una tendencia de aumento
-exponencial.} La resstricción es que todos los valores deben ser positivos.
+exponencial.} La restricción es que todos los valores deben ser positivos.
+
+Existen algunas diferencias entre la función \texttt{base::diff} y la función
+\texttt{tsibble::difference}. Esta última deja valores NA en el tsibble, por lo que el
+ggplot enviará un warning si no se elimnan.  Otro punto a considerar es que para las
+diferencias estacionales el parámetro que hay que utilizar es \texttt{lag = 12}.
+
+\subsubsection{Diferenciar}
+
+Las transformaciones como los logaritmos pueden ayudar a estabilizar la varianza de una serie
+temporal. La diferenciación puede ayudar a estabilizar la media de una serie temporal
+eliminando los cambios en el nivel de una serie temporal y, por lo tanto, eliminando (o
+reduciendo) la tendencia y la estacionalidad.
+
+\im{Diferencia estacional}
+
+Cuando se aplican tanto las diferencias estacionales como las diferencias regulares (o
+diferencias primeras), no importa qué se haga primero: el resultado será el mismo. Sin
+embargo, si los datos tienen un patrón estacional fuerte, \textbf{recomendamos que la
+diferenciación estacional se haga primero}, porque la serie resultante a veces será
+estacionaria y no habrá necesidad de una primera diferencia adicional. Si primero se hace la
+diferenciación, todavía habrá presente estacionalidad.
+
+Las primeras diferencias son el cambio entre una observación y la siguiente. Las diferencias
+estacionales son el cambio de un año a otro. Es poco probable que otros retardos tengan mucho
+sentido interpretable y deben evitarse.
 
 <<>>=
-por_mes |> 
+fibra_estacionaria <- por_mes |> 
   filter(material == "fibra48") |> 
   mutate(
-    log_cantidad = log(cantidad), 
-    diferencia = difference(log_cantidad, 12)) |> 
-  pivot_longer(cols = cantidad:diferencia, 
-               names_to = "tipo",
-               values_to = "cantidad_d") |> 
-  as_tibble() |> 
-  mutate(tipo = fct_inorder(tipo)) |>    
-  ggplot(aes(x = fecha, y = cantidad_d)) +
-  geom_line() +
-  facet_grid(vars(tipo), scales = "free_y")
+    log_cantidad          = log(cantidad), 
+    diferencia_estacional = difference(log_cantidad, lag = 12), # desviaciones mensuales
+    primera_diferencia    = difference(diferencia_estacional)) %>% 
+  pivot_longer(cols       = where(is.numeric), 
+               names_to   = "tipo",
+               values_to  = "cantidad_d") |> 
+  mutate(tipo = fct_inorder(tipo))
 @
 
 
+<<fig.asp=0.8>>=
+fibra_estacionaria |> 
+  graficar(vector = cantidad_d, .brk = tipo) 
+@
 
+Ahora sí la serie parece ser estacionaria, aunque siempre vemos al inicio un pico y un valle
+bastante pronunciado.
 
+\im{Prueba de Ljung-Box. Hipótesis nula H0: errores no correlacionados hasta el lag d}
 
-
-
-
+<<>>=
+fibra_estacionaria |> 
+	pivot_wider(names_from = tipo, values_from = cantidad_d) %>%
+	features(.vars = vars(cantidad, log_cantidad), ljung_box, lag = 10)
+@
 
 
 
