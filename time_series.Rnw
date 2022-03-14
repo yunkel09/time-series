@@ -128,7 +128,7 @@ BoldItalicFont = Souvenir-BoldItalic.otf]
 % NUEVOS COMANDOS ==============================================================
 
 
-\newcommand{\ti}[1]{\textcolor{azul}{\textbf{\texttt{#1}}}} % funciones código
+\newcommand{\ti}[1]{\textcolor{azul}{\texttt{#1}}} % funciones código
 \newcommand{\im}[1]{\textcolor{naranja}{\textbf{#1}}}       % títulos
 \newcommand{\va}[1]{\textcolor{cafe}{\texttt{\textbf{#1}}}} % variables
 \newcommand{\ro}[1]{\textcolor{rojo}{\textbf{#1}}}          % NAs
@@ -361,8 +361,8 @@ opts_chunk$set(echo        = TRUE,
 
 # definir formato del código
 opts_knit$set(out.format = "latex")
-thm <- knit_theme$get("biogoo")
-# thm <- knit_theme$get("acid")
+# thm <- knit_theme$get("biogoo")
+thm <- knit_theme$get("acid")
 knit_theme$set(thm)
 
 

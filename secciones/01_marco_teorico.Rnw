@@ -479,7 +479,7 @@ por_mes |> group_by(material) |> ACF(cantidad) |> autoplot()
 \end{figure}
 
 Sabemos que para una serie estacionaria el correlograma caerá a cero relativamente rápido con
-un decaimiento exponencial. Para una serie no estacionaria EL ACF disminuye lentamente, un
+un decaimiento exponencial. Para una serie no estacionaria el ACF disminuye lentamente, un
 decaimiento lento con una persistencia. Además, para datos no estacionarios, el valor de la
 primera autocorrelación es a menudo grande.
 
@@ -564,14 +564,45 @@ bastante pronunciado.
 
 \im{Prueba de Ljung-Box. Hipótesis nula H0: errores no correlacionados hasta el lag d}
 
+Podemos
+
 <<>>=
-fibra_estacionaria |> 
- pivot_wider(names_from = tipo, values_from = cantidad_d) %>%
- features(log_cantidad, ljung_box, lag = 10)
+fibra_estacionaria |>
+ features(cantidad_d, features = list(lj = ljung_box(lag = 10)))	
 @
 
+Ahora vemos un método un poco más automático para comprobar todas las transformaciones
+
+<<>>=
+fibra_estacionaria |> 
+ as_tibble() |>
+ select(tipo, cantidad_d) |> 
+ group_nest(tipo) |>
+ mutate(
+ 	lb_stat   = map(data, ~ ljung_box(.x, lag = 10)[[1]]),
+ 	lb_pvalue = map(data, ~ ljung_box(.x, lag = 10)[[2]]), 
+ 	.keep = "unused") |> 
+ unnest(cols = lb_stat:lb_pvalue)
+@
+
+Como p<0.05, rechazamos la hipótesis nula y por tanto existe correlación para algún retar
+o menor que 10. Existe autocorrelación en la serie temporal, información que puede ser
+interesante capturar en un modelo
 
 
+\ro{Pendiente ver todas las pruebas que trae el paquete feast}
+
+Rosana indica que la mejor prueba es la KSS
+
+<<>>=
+# fibra_estacionaria |>
+#  filter(tipo == "cantidad") |> 
+#  features(cantidad_d, feature_set(pkgs = "feast"))	
+@
+
+\im{Prueba ADF: Hipótesis nula H0: serie no estacionaria}
+
+\section{Autocorrelación parcial}
 
 
 
