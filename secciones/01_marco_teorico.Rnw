@@ -566,8 +566,8 @@ bastante pronunciado.
 
 <<>>=
 fibra_estacionaria |> 
-	pivot_wider(names_from = tipo, values_from = cantidad_d) %>%
-	features(.vars = vars(cantidad, log_cantidad), ljung_box, lag = 10)
+ pivot_wider(names_from = tipo, values_from = cantidad_d) %>%
+ features(log_cantidad, ljung_box, lag = 10)
 @
 
 
