@@ -352,8 +352,8 @@ opts_chunk$set(echo        = TRUE,
                comment     = NA, 
                highlight   = TRUE,
                strip.white = TRUE, 
-               fig.width   = 7, 
-               fig.asp     = 0.61,
+               fig.width   = 5, 
+               fig.asp     = 0.51,
                # fig.height  = 3,
                out.extra = '',
                fig.path    = "figure/",
@@ -397,7 +397,7 @@ knit_hooks$set(document = function(x) {sub('\\usepackage[]{color}',
  import::from(colorblindr, scale_fill_OkabeIto, palette_OkabeIto)
  import::from(conectigo, cargar_fuentes, conectar_msql)
  import::from(lubridate, .except = c("intersect", "setdiff", "union"))
- import::from(forecast, ggAcf)
+ import::from(forecast, ggAcf, ggPacf)
  import::from(DBI, dbDisconnect)
  import::from(ggpmisc, stat_peaks, stat_valleys, stat_correlation)
  import::from(ggpp, position_nudge_keep)
@@ -442,6 +442,39 @@ knit_hooks$set(document = function(x) {sub('\\usepackage[]{color}',
  }
  
 theme_set(drako)
+
+# graficar
+graficar <- function(.df, vector, .brk) {
+ .df |> 
+  ggplot(aes(x = date, y = {{ vector }})) +
+  geom_line() +
+  geom_smooth(method = "loess", formula = 'y ~ x', se = F, size = 0.5) +
+  facet_grid(rows = vars({{ .brk }}), scales = "free_y") +
+  scale_x_date(date_breaks = "6 month", labels = date_format("%Y-%b")) +
+  drako
+}
+
+# agregar información en los valles y picos
+agregar_info <- function(gg_object) {
+ gg_object +
+  stat_peaks(geom = "point",   span = 11, color = "red",  size = 0.7) +
+  stat_valleys(geom = "point", span = 11, color = "blue", size = 0.7) +
+  stat_peaks(geom        = "text",
+             span        = 11,
+             color       = "red",
+             vjust       = 0,
+             hjust       = -0.5,
+             x.label.fmt = "%b",
+             size = 1.5) +
+  stat_valleys(geom        = "text",
+               span        = 11,
+               color       = "blue",
+               vjust       = 0,
+               hjust       = -1,
+               x.label.fmt = "%b",
+               size = 1.5)
+}
+
 @
 
 % aquí va la portada
@@ -456,20 +489,14 @@ theme_set(drako)
 
 
 % aquí van las secciones
- 
 
-<<motor, child='secciones/01_marco_teorico.Rnw'>>=
-
-@
-
-
-
-<<bib, child='secciones/09_bibliografia.Rnw'>>=
+<<child='secciones/01_teoria.Rnw'>>=
 
 @
 
+<<child='secciones/09_bibliografia.Rnw'>>=
 
-
+@
 
 \end{document}
 
