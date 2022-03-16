@@ -392,12 +392,13 @@ knit_hooks$set(document = function(x) {sub('\\usepackage[]{color}',
 
  # importar solo las funciones necesarias de cada paquete
  import::from(magrittr, "%T>%", "%$%", .into = "operadores")
+ import::from(zeallot, `%<-%`)
  import::from(kableExtra, .except = "group_rows")
  import::from(cowplot, .except = "stamp")
  import::from(colorblindr, scale_fill_OkabeIto, palette_OkabeIto)
  import::from(conectigo, cargar_fuentes, conectar_msql)
  import::from(lubridate, .except = c("intersect", "setdiff", "union"))
- import::from(forecast, ggAcf, ggPacf)
+ import::from(forecast, ggAcf, ggPacf, Arima)
  import::from(DBI, dbDisconnect)
  import::from(ggpmisc, stat_peaks, stat_valleys, stat_correlation)
  import::from(ggpp, position_nudge_keep)
@@ -475,6 +476,33 @@ agregar_info <- function(gg_object) {
                size = 1.5)
 }
 
+# es mejor usar notación científica para los p-valores
+cient <- label_scientific()
+
+# resultados del modelo con ARIMA
+fun_list <- list(
+ coeficientes  = function(df) df |> 
+  tidy() |> 
+	mutate(
+		across(estimate:statistic, round, 4),
+		across(p.value, cient)),
+ bondad = function(df) df |> 
+  glance() |>
+ 	arrange(AIC) |> # el menor AIC es el más parsimonioso
+ 	select(.model:BIC)
+)
+
+# extraer la información de los modelos para comparar
+ajustar_modelos <- function(mdl, fun_list = fun_list) {
+ fun_list |> 
+  map(exec, df = mdl)
+}
+
+# recuerda colocar result = 'asis' en el chunk
+print_tablas <- function(lista_tablas) {
+ lista_tablas |> 
+  iwalk(~ tabla(df = .x, cap = .y) |> print())
+}
 @
 
 % aquí va la portada
