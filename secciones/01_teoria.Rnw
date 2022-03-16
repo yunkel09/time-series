@@ -1,0 +1,729 @@
+\chapter{Marco Teórico}
+
+\section{Estacionalidad}
+
+El componente estacional consiste en efectos que son razonablemente estables con respecto al
+tiempo, la dirección y la magnitud. Surge de influencias sistemáticas relacionadas con el
+calendario.
+
+También incluye efectos sistemáticos relacionados con el calendario que no son estables en su
+calendario anual o que son causados por variaciones en el calendario de un año a otro, tales
+como: la Navidad, el inicio y fin del curso escolar, el número de días por mes, las
+vacaciones y días festivos que ocurren cada año pero pueden variar en el calendario.
+
+\im{¿Cómo identificamos la estacionalidad?}
+ 
+La estacionalidad en una serie temporal puede identificarse mediante picos y valles
+regularmente espaciados que tienen una dirección constante y aproximadamente la misma
+magnitud cada año, en relación con la tendencia.
+ 
+\im{¿Qué es el ajuste estacional y por qué lo necesitamos?}
+
+El ajuste estacional es el proceso de estimar y luego eliminar de una serie de tiempo las
+influencias que son sistemáticas y relacionadas con el calendario. Los datos observados deben
+ajustarse estacionalmente ya que los efectos estacionales pueden ocultar tanto el verdadero
+movimiento subyacente en la serie, como ciertas características no estacionales que pueden
+ser de interés para los analistas.
+ 
+\im{Manchas solares}
+
+A continuación, agrega las órdenes necesarias para generar un gráfico de la serie de tiempo y
+un gráfico de la ACF (correlograma) para los datos sunspot.year que vienen precargados en R.
+
+Recuerda que la ciclicidad induce picos en la duración promedio del ciclo. 
+
+<<>>=
+autoplot(sunspot.year)
+ggAcf(sunspot.year)
+@
+
+Al observar el gráfico ACF mira cómo cambian las correlaciones a medida que aumenta el
+retraso, ¿en qué valor de retraso puedes encontrar la autocorrelación máxima? ¿puedes ver
+alguna estacionalidad, ciclicidad y/o tendencia? ¿Qué comportamiento puedes identificar?
+
+\begin{shaded}
+Primero, vemos en la gráfica que la serie tiene patrones \textbf{cíclicos}. Recordemos que
+un ciclo ocurre cuando los datos exhiben subidas y bajadas que no tienen una frecuencia fija.
+Estas fluctuaciones generalmente se deben a las condiciones económicas y, a menudo, están
+relacionadas con el "ciclo económico". La duración de estas fluctuaciones suele ser de al
+menos 2 años. La serie anual de manchas solares sigue un ciclo de aproximadamente 10-11 años,
+esto causa un pico en el retardo o LAG 10-11 en el gráfico de autocorrelación ACF.
+\end{shaded}
+
+
+\im{Muertes accidentales en EE.UU}
+
+La estacionalidad induce picos en los \textbf{retardos estacionales}. Piensa en las
+vacaciones, cada día festivo tendrá ciertos productos que alcanzan su punto máximo en ese
+momento cada año y, por lo tanto, la correlación más fuerte será los valores en ese mismo
+momento cada año.
+
+Utiliza los datos USAccDeaths (precargados en R) sobre mortalidad mensual por accidentes en
+EE.UU. en 1973–1978 y detecta cuál es la estacionalidad de los datos. Para ello, rellena los
+espacios a continuación y ejecuta las órdenes en R.
+ 
+
+<<>>=
+autoplot(USAccDeaths)
+ggAcf(USAccDeaths)
+@
+ 
+¿Qué estacionalidad tienen los datos?
+
+\begin{shaded}
+Observamos un comportamiento estacional cada 6 meses, esto causa un pico en el retardo o LAG
+6 en el correlograma.
+\end{shaded}
+
+Recuerda que el gráficos de autocorrelación ACF nos ayuda a identificar las características
+de las series temporales.
+
+Con esto en mente, observa los siguientes gráficos y haz coincidir los gráficos ACF que se
+muestran (A-C) con sus gráficos de tiempo correspondientes (1-3).
+
+
+\begin{figure}[H]
+\includegraphics[width = \linewidth]{ts_acf}
+\caption{Interpretación de resultados}
+   \label{fig:iden}
+\end{figure}
+
+\begin{shaded}
+1-B, 2-A y 3-C
+\end{shaded}
+
+\section{Estacionariedad}
+
+\im{¿Qué es una serie estacionaria?}
+
+En general, se dice que una serie temporal es estacionaria cuando es "estable", es decir,
+cuando se comporta de manera similar de un período de tiempo a otro y sus propiedades no
+dependen del momento en que se observa la serie.
+
+En el contexto de series temporales, la estacionariedad se refiere a: la estabilidad de la
+media (es decir, a que no haya una tendencia) y la estabilidad de la correlación (es decir,
+la estructura de correlación de los datos permanece constante en el tiempo).
+
+Entonces, tenemos los siguientes casos:
+
+ \begin{itemize}[itemsep=1ex]
+  \item \textbf{Serie estacionaria:} si los datos varían alrededor un mismo valor promedio y
+  con la misma variabilidad.
+  \item \textbf{Serie no estacionaria:} si la media y/o la varianza cambian a lo largo del
+  tiempo.
+ \end{itemize}
+ 
+\im{¿Por qué nos interesa que la serie sea estacionaria?} 
+
+Cuando una serie temporal es estacionaria, puede ser más fácil modelarla. 
+
+
+Los métodos de modelado estadístico suponen o requieren que las series temporales sean
+estacionarias para ser efectivos.
+
+A grandes rasgos verificar esta propiedad en el estudio de las series de tiempo tiene su
+importancia en los siguientes aspectos.
+
+ \begin{itemize}[itemsep=1ex]
+  \item \textbf{Facilidad de Análisis:} las series estacionarios pueden modelarse con pocos
+  parámetros.
+  \item \textbf{Mejor Entendimiento:} las series temporales tienen distribución estable en el
+  tiempo, es decir, las características estadísticas de nuestra serie de tiempo (media,
+  varianza y autocorrelación) serán las mismas tanto en el futuro como en el pasado.
+  \item \textbf{Ubicuidad:} la estacionariedad nos permite generalizar nuestros resultados al
+  campo de estudio, no sólo limitarnos al problema que estemos analizando.
+ \end{itemize}
+ 
+En el caso de que se incumpla el supuesto de estacionariedad, debemos estacionarizar las
+series de tiempo antes de ajustar un modelo. Veremos más adelante cómo hacerlo.
+
+\im{¿Cómo identificar si una serie es estacionaria?}
+
+Podemos evaluar la estacionariedad mediante gráficos y/o pruebas estadísticas. Si la serie es
+estacionaria, los gráficos de tiempo mostrarán que la serie es aproximadamente horizontal
+(aunque es posible algún comportamiento cíclico), con una variación constante (sin tendencia
+ni estacionalidad). Para una serie temporal estacionaria, además el gráfico de
+autocorrelación ACF caerá a cero relativamente rápido, mientras que la ACF de datos no
+estacionarios disminuye lentamente.
+
+Para evaluar la estacionariedad en conjuntos de datos donde las tendencias y las
+estacionalidades son difíciles de ver, puede ser bastante útil evaluar la autocorrelación de
+la serie temporal. Podemos entonces observar el correlograma de la serie temporal para
+evaluar su estacionariedad.
+
+Analiza la estacionariedad de las desviaciones de la temperatura media global tierra-océano
+(gtemp del paquete astsa)
+
+\section{Autocorrelación}
+
+La esencia de la \textbf{correlación serial (autocorrelación)} es que deseamos ver cómo se
+afectan entre sí las observaciones secuenciales en una serie temporal. Si podemos encontrar
+patrones (estructura) en estas observaciones, entonces probablemente nos ayudará a mejorar
+nuestros modelos y predicciones.
+
+Algunos \textbf{patrones que hemos detectado en el correlograma} se pueden resumir a
+continuación:
+
+
+ \begin{itemize}[itemsep=1ex]
+ 
+  \item Las tendencias fuertes darán lugar a que las observaciones más recientes tengan un
+  valor más cercano entre sí. El gráfico ACF de las series temporales con \textbf{tendencia}
+  tiende a tener valores positivos en los primeros retardos que disminuyen lentamente a
+  medida que aumentan los retardos.
+  
+  \item Cuando la serie es \textbf{estacional}, en el gráfico ACF las autocorrelaciones serán
+  mayores en los retardos estacionales (es decir, en múltiplos de la frecuencia estacional).
+  Piensa en las vacaciones, cada día festivo tendrá ciertos productos que alcanzan su punto
+  máximo de venta en ese momento cada año y, por lo tanto, la correlación más fuerte será los
+  valores en ese mismo momento cada año.
+  
+  \item Cuando los datos tienen \textbf{tendencia y estacionalidad}, observamos una
+  combinación de los dos efectos anteriores.
+  
+  \item De manera similar a lo que ocurre con la estacionalidad, cuando la serie es
+  \textbf{cíclica}, veremos que en el gráfico ACF las autocorrelaciones serán mayores en la
+  duración promedio del ciclo.
+  
+ \end{itemize}
+
+<<>>=
+autoplot(fma::mink)
+ggAcf(fma::mink)
+@
+
+\begin{shaded}
+La población de visones presenta ciclos (picos) cada 10 años aproximadamente, esto causa un
+pico cercano al retardo o LAG 10 en el gráfico de autocorrelación ACF.
+\end{shaded}
+
+
+<<>>=
+pigs.ts <- ts(fma::pigs[121:188], start = c(1990, 1), frequency = 12)
+autoplot(pigs.ts)
+@
+
+El gráfico muestra una ligera tendencia a lo largo del tiempo, pero no está claro.
+
+<<>>=
+ggAcf(pigs.ts)
+@
+
+Sin embargo, el gráfico de la ACF hace que el patrón sea más claro.
+
+\begin{shaded}
+Hay más información en el gráfico ACF que en el diagrama de serie de tiempo simple. Vemos que
+los primeros tres retardos superan claramente la línea azul, lo que sugiere que es posible
+alguna señal en este componente de la serie de tiempo que se puede utilizar para crear un
+modelo.
+\end{shaded}
+
+<<>>=
+Box.test(fma::pigs, lag = 24, fitdf = 0, type = "Lj")
+@
+
+\begin{shaded}
+El p-valor de la prueba es estadísticamente significativo (p < 001), por lo tanto, esto
+respalda lo que hemos visto en el gráfico ACF anterior, la serie temporal muestra un patrón
+de comportamiento particular que podemos utilizar para su modelado.
+\end{shaded}
+
+
+<<>>=
+autoplot(astsa::gtemp)
+ggAcf(astsa::gtemp)
+@
+
+<<>>=
+Box.test(astsa::gtemp, lag = 22, type = "Lj")
+@
+
+\begin{shaded}
+Los datos muestran una tendencia y por tanto no son estacionarios.
+\end{shaded}
+
+
+\im{Terminología}
+
+ \begin{itemize}[itemsep=1ex]
+  
+  \item La autocorrelación también se llama \textbf{correlación en serie}. Este tipo de
+  correlación se utiliza para comprender cómo las observaciones de series temporales dependen
+  de los valores de la misma serie en momentos anteriores.
+  
+  \item Las observaciones pasadas de la serie se denominan retrasos o retardos o lag.
+  
+  \item Un proceso es \textbf{ergódico} cuando conforme k se hace más grande, la
+  autocorrelación se hace más pequeña. Es decir, que la dependencia entre variables tiene
+  menos importancia pasado más tiempo.
+  
+ \end{itemize}
+
+\section{Transformaciones}
+
+Hemos visto qué es la estacionariedad y las ventajas que presentan las series estacionarias
+cuando queremos modelar y predecir. Sin embargo, \textbf{las series temporales generalmente
+no son estacionarias.}
+
+\im{¿Cómo hacer una serie temporal estacionaria?}
+
+A menos que tu serie temporal sea estacionaria, no puedes construir un modelo de serie
+temporal. Esta es la razón por la que estudiamos la estacionariedad antes de hablar de
+modelos de series temporales.
+
+Las series temporales con tendencias, o con estacionalidad, no son estacionarias: la
+tendencia y la estacionalidad afectarán el valor de la serie temporal en diferentes momentos.
+
+En los casos en que se incumple el supuesto de estacionariedad, el primer requisito es
+estacionarizar la serie de tiempo. Hay múltiples formas de hacer que tus datos sean
+estacionarios. Por ejemplo, podemos transformar la serie tomando diferencias (anuales o
+estacionales) y logaritmos para estacionarizar una serie temporal.
+
+Cuando se aplican tanto las diferencias estacionales como las diferencias regulares (o
+diferencias primeras), no importa qué se haga primero: el resultado será el mismo. Sin
+embargo, si los datos tienen un patrón estacional fuerte, \textbf{recomendamos que la
+diferenciación estacional se haga primero}, porque la serie resultante a veces será
+estacionaria y no habrá necesidad de una primera diferencia adicional. Si primero se hace la
+diferenciación, todavía habrá presente estacionalidad.
+
+\im{Diferencia estacional}
+
+Una forma de \textbf{desestacionalizar} es tomar una \textbf{diferencia estacional}. Es
+decir, podemos calcular la diferencia entre el valor de la serie en un mes del año respecto
+al mismo mes del año anterior. Recuerda que siempre se pierde el primer dato de la serie en
+la diferenciación.
+
+\begin{center}
+\ti{diff(x, lag = 1, differences = 1, ...)}
+\end{center}
+
+La función diff() permite especificar el retardo (lag) y el orden (differences) de las
+diferencias. El argumento lag especifica si tomamos diferencias en 1 tiempo o más (por
+defecto es 1), mientras que el argumento differences refiere a si tomamos diferencias anuales
+(1), mensuales (12), etc..
+
+\im{Cálculo de la tasa de cambio de la serie}
+
+\begin{center}
+\textbf{Primera diferencia del logaritmo = cambio porcentual}
+\end{center}
+
+Cuando aplicamos el logaritmo junto con la diferenciación de la serie pasamos de tener
+diferencias absolutas a obtener diferencias relativas (es decir, porcentajes). Por tanto, la
+serie diff(log(x)) representa el cambio porcentual en "x" de un período a otro.
+
+Esto es porque el cambio porcentual en "x" en el período "t", definido como (X(t) -X(t-1)) /
+X(t-1), es aproximadamente igual a log(X(t)) - log(X(t-1)), cuando el cambio porcentual
+es pequeño. En términos estadísticos, esto significa que es virtualmente idéntico a diff(
+log(x)).
+
+Esta transformación nos permite comparar "manzanas con manzanas" entre acciones, índices o
+cualquier otra serie.
+
+\section{Autocorrelación parcial}
+
+\im{¿Qué es un modelo de series de tiempo?}
+
+Esencialmente, es un modelo estadístico que intenta "explicar" la correlación serial presente
+en una serie de tiempo.
+
+Para la selección de un modelo de serie temporal nos valdremos de los patrones identificados
+en la serie de tiempo y su correlograma. Pero además, debemos conocer y considerar una amplia
+variedad de modelos, incluidos sus supuestos y su complejidad, para elegir el "más simple"
+que explique la correlación serial.
+
+\subsection{White Noise (WN)}
+
+Entonces, comencemos por el modelo más sencillo de series temporales, el modelo de
+\textbf{ruido blanco.}
+
+Las series de tiempo que no muestran autocorrelación (correlograma sin picos), tienen media
+(cero) y varianza constante (simga2), tienen un comportamiento similar al ruido blanco. Se
+dice que los elementos de la serie son independientes e idénticamente distribuidos (iid).
+
+El punto clave del modelo de ruido blanco es que lo utilizaremos como modelo para los
+residuos. Se espera que los datos de series de tiempo contengan algún componente de ruido
+blanco además de la señal generada por el proceso subyacente. Por lo tanto, buscaremos
+ajustar otros modelos de series de tiempo a nuestra serie observada, y usaremos el modelo de
+ruido blanco sobre los residuos como confirmación de que hemos eliminado cualquier
+correlación serial restante, indicándonos que tenemos un buen ajuste del modelo.
+
+\im{¿Cómo podemos saber si el modelo de ruido blanco se ajusta bien a nuestros datos?}
+
+Una serie de tiempo es ruido blanco \textbf{si las variables son independientes y están
+distribuidas de manera idéntica con una media de cero.} Esto significa que todas las
+variables tienen la \textbf{misma varianza (sigma2)} y cada valor tiene una
+\textbf{correlación cero} con todos los demás valores de la serie.
+
+<<>>=
+autoplot(fma::dj)
+@
+
+\begin{shaded}
+Los datos no se comportan como una serie de ruido blanco, no tienen media y varianza
+constante. Analicemos ahora la autocorrelación con el gráfico de la ACF.
+\end{shaded}
+
+<<>>=
+ggAcf(fma::dj)
+@
+
+\begin{shaded}
+Varias correlaciones son significativas.
+Por último aplicamos la prueba Q de Ljung-Box que hemos visto en la lección anterior, donde
+la hipótesis nula (H0) indicaba que las autocorrelaciones, hasta un retarlo o lag d, son
+iguales a cero. Utilizamos la función Box.test del paquete stats que viene instalado por
+defecto en R.
+\end{shaded}
+
+<<>>=
+Box.test(fma::dj, lag = 10, type = "Ljung-Box")
+@
+
+\begin{shaded}
+Como p < 0.05, rechazamos la hipótesis nula y por tanto existe correlación para algún retardo
+menor que 10. Existe autocorrelación en la serie temporal, información que puede ser
+interesante capturar en un modelo.
+\end{shaded}
+
+\subsection{Random Walk (RW)}
+
+Anteriormente hemos visto que el ruido blanco es un modelo adecuado para series estacionarias
+y sin correlación serial. Ahora veremos la caminata aleatoria (Random Walk, RW), el modelo
+más sencillo de serie no estacionaria.
+
+Una caminata aleatoria es el modelo de series de tiempo más sencillo para series no
+estacionarias, donde la observación actual es igual a la observación anterior con un paso
+aleatorio hacia arriba o hacia abajo.
+
+Más formalmente, una caminata aleatoria es un modelo de serie temporal Xt tal que:
+
+\begin{equation}
+   \bm{X_{t} = c + X_{t-1} + w_{t}}
+   \label{rw}
+\end{equation}
+
+donde c es una constante y wt es una serie discreta de ruido blanco.
+
+Hay dos tipos de caminatas aleatorias: 
+
+ \begin{itemize}[itemsep=1ex]
+  \item \textbf{La caminata aleatoria sin deriva} (es decir, sin término constante o de
+  ordenada al origen), y
+  \item \textbf{La caminata aleatoria con deriva} (es decir, hay un término constante).
+ \end{itemize}
+
+Las propiedades de las series de caminara aleatoria son un poco más interesantes que las del
+ruido blanco. Si bien la media de una caminata aleatoria sigue siendo cero, \textbf{la
+covarianza ahora depende del tiempo. A medida que aumenta el tiempo, también lo hace la
+varianza.} Por lo tanto, tendrá poco sentido extrapolar las "tendencias" en ellos a largo
+plazo, ya que toman, literalmente, caminos al azar. Otra características de estas series es
+que el correlograma mostrará una \textbf{autocorrelación alta que disminuye lentamente a
+medida que aumentan los retardos.}
+
+El modelo de caminata aleatoria (RW) también es un modelo básico de series de tiempo. Es la
+suma acumulada (o integración) de una serie de ruido blanco medio cero (WN), de modo que la
+primera serie de diferencias de un RW es una serie WN.
+
+\im{¿Cómo podemos saber si el modelo de caminata aleatoria se ajusta bien a nuestros datos?}
+
+Bueno, usamos la definición de un caminara aleatoria, que es simplemente que la diferencia
+entre dos valores consecutivos es igual a la realización de un proceso de ruido blanco
+discreto. Si creamos una serie con las diferencias de los valores de nuestra serie,
+deberíamos tener una serie que se parezca al ruido blanco discreto. Es decir, cuando
+graficamos el correlograma, buscamos evidencia de ruido blanco discreto, es decir, una serie
+de residuos que no está correlacionada en serie.
+
+\im{Ejemplo}
+
+Continuemos con los datos del índice de Dow Jones. Anteriormente hemos visto que este índice
+no sigue un modelo de ruido blanco. Veamos ahora si pueden comportarse como un modelo de
+caminata aleatoria. Si este fuera el caso, \textbf{los cambios diarios en el índice DJ
+deberían tener un comportamiento similar al ruido blanco.}
+
+Probemos con transformar la serie para obtener los \textbf{cambios diarios en el índice.} Usa
+la siguiente transformación en primeras diferencias:
+
+<<>>=
+ddj <- diff(fma::dj)
+@
+
+La función \texttt{diff()} toma la diferencia entre mediciones consecutivas, se conoce como
+diferenciación o primeras diferencias. Recuerda que la diferenciación puede ayudar a
+estabilizar la media al eliminar o reducir la tendencia y la estacionalidad, lo que podría
+dejar solo ruido blanco.
+
+Graficamos los datos diferenciados y su ACF. 
+
+<<>>=
+autoplot(ddj)
+@
+
+\begin{shaded}
+Los cambios diarios en el índice Dow Jones ocurren de manera aleatoria, con algunos cambios
+de mayor amplitud a lo largo del período.
+\end{shaded}
+
+<<>>=
+ggAcf(ddj)
+@
+
+\begin{shaded}
+El gráfico ACF de ddj no muestra patrones aparentes. A excepción de la correlación para el
+retardo 6 (LGA6), ningún otro coeficiente de autocorrelación supera la línea azul punteada,
+lo que implica que las autocorrelaciones de los cambios diarios valen cero con un nivel de
+confianza del 95\%.
+\end{shaded}
+
+\textbf{NOTA:} recuerda que se trata de un nivel de confianza, en este caso al 95\%, por lo
+que 1 de las 25 observaciones se pueden ubicar fuera del límite del 95\% solo por azar. Por
+lo tanto, los cambios diarios parecen ser ruido blanco a pesar de que la correlación para el
+LAG 6 sea significativa.
+
+Aplicamos por último la prueba Q de Ljung-Box para evaluar la autocorrelación de los datos.
+
+<<>>=
+Box.test(ddj, lag = 10, type = "Ljung-Box")
+@
+
+\begin{shaded}
+Vemos que no se rechaza la hipótesis nula de ausencia de autocorrelación hasta el retardo
+indicado (lag = 10).
+\end{shaded}
+
+\subsection{PACF}
+
+Dos instrumentos para identificar la dinámica de una serie temporal son: La función de
+autocorrelación (ACF: AutoCorrelation Function) y la función de autocorrelación parcial o
+(PACF: Partial AutoCorrelation Function).
+
+Hemos hablado del ACF en otros vídeos, mide la correlación entre la observación en el momento
+actual y las observaciones en tiempos anteriores.
+
+Una descripción intuitiva del PACF es que \textbf{"representa la cantidad de correlación con
+cada retardo que no se explica por retardos más recientes"}. Por tanto, es una correlación
+parcial o condicional.
+
+\begin{figure}[H]
+\includegraphics[width = \linewidth]{acf_pacf}
+\caption{Diferencia entre ACF y PACF}
+   \label{fig:diffpacf}
+\end{figure}
+
+\im{¿Cómo usar el PACF en pronósticos de series de tiempo?}
+
+Imagina que queremos determinar cuántos retardos pasados (o lags) debemos incluir en nuestro
+modelo para predecir la temperatura global (datos gtemp de R).
+
+Observamos el autocorrelograma ACF de la serie de temperatura global:
+
+<<>>=
+ggAcf(astsa::gtemp)
+@
+
+\begin{shaded}
+El gráfico ACF muestra un decaimiento suave de la autocorrelación, vemos que las
+autocorrelaciones son significativas para un gran número de rezagos, lo que se llama
+\textbf{persistencia.}
+\end{shaded}
+
+Entonces nos preguntamos, ¿realmente será necesario incluir tantos tiempos pasados para
+predecir la temperatura global? ¿o las autocorrelaciones en los retardos superiores se pueden
+deber simplemente a la propagación de la autocorrelación en retardos bajos?
+
+Para responder a esta pregunta utilizamos el autocorrelograma parcial PACF. 
+
+<<>>=
+ggPacf(astsa::gtemp)
+@
+
+\begin{shaded}
+El gráfico PACF tiene dos picos significativos, en el retraso 1 y 2, lo que significa que
+todas las autocorrelaciones de orden superior que vimos en el ACF se explican realmente por
+la autocorrelación del retraso 1 y 2. Esto se conoce como el \textbf{orden} de un modelo
+autorregresivo (AR), (tranquilos, veremos estos modelos más adelante).
+\end{shaded}
+
+\section{Modelos ARIMA}
+
+En algunos casos un modelo de ruido blanco o de caminata aleatoria es insuficiente para
+capturar el comportamiento de autocorrelación completo de una serie temporal. En estos casos
+se necesitan modelos más sofisticados.
+
+En esta sección vamos a discutir 2 tipos de modelo: el modelo autorregresivo (AR), el modelo
+de  media móvil (MA) y el modelo de mixto de autogresivo de media móvil (ARMA).
+
+\subsection{Modelo autorregresivo AR(p)}
+
+Para datos estacionarios, uno de los modelos más sencillos que permite modelar la dependencia
+de los valores de una serie temporal con su pasado es el modelo autorregresivo (AutoRegresive
+Models, AR).
+
+Un modelo autorregresivo AR es simplemente una \textbf{regresión lineal múltiple} de una
+serie de tiempo con los \textbf{valores de la serie en tiempos anteriores (llamados retardos
+o lags) como predictores.} Entonces, \textbf{las últimas p observaciones} se usan como
+predictores en la ecuación de regresión. Se dice que "p" es el orden del modelo
+autorregresivo.
+
+Descubrimos que los modelos AR pueden generar un \textbf{amplio repertorio de patrones} según
+los valores de sus parámetros. Hemos visto que existen restricciones de los parámetros de los
+modelos AR para datos estacionarios.
+
+NOTA: fíjate que el modelo autorregresivo es simplemente una extensión de la caminata
+aleatoria, que incluye términos más atrás en el tiempo.
+
+\im{¿Cómo identificar y ajustar un modelo AR(p)?}
+
+\begin{shaded}
+\textbf{En una serie estacionaria con un proceso AR puro la ACF decae de manera exponencial o
+\ro{sinusoidal}, mientras que la PACF se cortará en el retardo p.}
+\end{shaded}
+
+Cuando conoces el orden (estructura) del modelo, puedes ajustar un modelo con la función
+Arima() del paquete forecast.
+
+\begin{center}
+\ti{Arima(y, order = c(0, 0, 0), include.mean = TRUE, include.drift = FALSE, ...)}
+\end{center}
+
+Para ajustar un modelo AR(p) utilizamos la función \ti{Arima()} de R, indicándole el orden
+\textbf{c(p,0,0)}. El resto de los argumentos son los datos ("y"), \ti{include.mean = TRUE}
+significa que la media no es cero, y si especificas \ti{include.drift = TRUE} se ajusta un
+modelo que fluctúa alrededor de una tendencia (hacia arriba o hacia abajo)
+
+El resultado mostrará la \textbf{estimación de los parámetros del modelo:} la/s pendiente/s
+\textbf{phi} (indicada por las columnas ar1, ar2, ...), el intercepto (o media) y la varianza
+del ruido (sigma2). También tenemos información sobre el error estándar de estas
+estimaciones, la verosimilitud (Log Lik) y el coeficiente de información de Akaike del modelo
+(AIC).
+
+Para predecir con este modelo utilizamos la función \ti{forecast()} del paquete forecast:
+
+\begin{center}
+\ti{forecast(objeto, h, ...)}
+\end{center}
+
+donde debes especificar el objeto que hayas creado con el ajuste del modelo como argumento, y
+puedes indicar el horizonte de pronóstico con el argumento h.
+
+\im{Ejemplo}
+
+<<fig.width=7, fig.asp=0.7>>=
+sunspot.year |> 
+ as_tsibble() |> 
+ gg_tsdisplay(y = value, plot_type = "partial")
+@
+
+\begin{shaded}
+Vemos que el número de manchas solares parece tener un comportamiento autorregresivo, el ACF
+decae (con un comportamiento sinusoidal) mientras que el PACF se corta en 3.
+\end{shaded}
+
+Probemos primero ajustar el modelo más sencillo, un AR(1). Más adelante probaremos con los
+modelos AR(2) y AR(3) y compararemos los resultados. Recuerda que el modelo AR(1) viene dado
+por la siguiente ecuación:
+
+\begin{equation}
+   \bm{Y_{t} = c + \phi \ast Y_{t-1} + \epsilon_{t}}
+   \label{ar1}
+\end{equation}
+
+Para ajustar el modelo utilizamos la función Arima indicándole un 1 en el primer argumento
+del orden del modelo (los otros dos argumentos los veremos más adelante, cuando profundicemos
+en los modelos ARIMA, por ahora quédate con la idea de que el primer valor que se le da al
+argumento "order" es el orden de la parte autorregresiva del modelo).
+
+<<>>=
+Arima(sunspot.year, order = c(1, 0, 0))
+@
+
+Veamos el mismo resultado, pero con la función \ti{ARIMA} del paquete
+$\left \{fable \right \}$
+
+<<>>=
+sun_tb <- sunspot.year |> 
+ as_tsibble()
+@
+
+Probemos ajustando varios modelos
+
+<<>>=
+sun_fit <- sun_tb |> 
+ model(modelo1  = ARIMA(value ~ 1 + pdq(1, 0, 0)),
+       stepwise = ARIMA(value),
+       busqueda = ARIMA(value, stepwise = FALSE))
+@
+
+
+
+<<>>=
+sun_fit |> tabla(cap = "Modelos ajustados")
+@
+
+Coloquemoslo de forma tal que sea más fácil ver el orden
+
+<<>>=
+sun_fit |> 
+ pivot_longer(cols = everything(), 
+ 						  names_to = "modelo",
+ 						  values_to = "orden") |> 
+ tabla(cap = "Modelos ajustados")
+@
+
+
+
+<<results='asis'>>=
+ajustar_modelos(sun_fit, fun_list) |> 
+	print_tablas()
+@
+
+\begin{shaded}
+Aquel modelo con menor AIC será el más parsimonioso y por tanto el que se recomendará
+seleccionar.
+\end{shaded}
+
+En la tabla de coeficientes vemos que el valor de $\phi = 0.8196$, la constante $c = 8.78$,
+aunque la función original de ARIMA me regresa 48.69. 
+
+$$Y_{t} = 48.6986 + 0.8196 \ast Y_{t-1} + \epsilon_{t}$$
+
+
+Para evaluar visualmente qué tan bien se ajusta el modelo que hemos creado a nuestros datos,
+vamos a graficar los valores ajustados junto con los valores observados (esta es una
+aproximación muy simple, más adelante en el temario veremos aproximaciones más sofisticadas
+para evaluar el ajuste del modelo).
+
+Despúes de evaluar y seleccionar el modelo, debemos ajustar únicamente ese, ya que no fue
+posible (por el momento) realizar el ajuste a partir del objeto que contiene más modelos.
+
+<<>>=
+sun_mod <- sun_tb |> 
+ model(modelo1  = ARIMA(value ~ 1 + pdq(1, 0, 0)))
+@
+
+
+<<>>=
+sun_tb |>
+ autoplot(value) +
+ autolayer(fitted(report(sun_mod)), series = "Fitted", color = "orange")
+@
+
+Esto da un warning, así que lo mejor será usar la opción Arima
+
+<<>>=
+(fit <- Arima(sunspot.year, order=c(1,0,0)))
+@
+
+
+<<>>=
+autoplot(sunspot.year) + autolayer(fitted(fit),series = "Fitted")
+@
+
+
+
+
+
+
+
+
+
