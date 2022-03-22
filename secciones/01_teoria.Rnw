@@ -544,7 +544,7 @@ la autocorrelación del retraso 1 y 2. Esto se conoce como el \textbf{orden} de 
 autorregresivo (AR), (tranquilos, veremos estos modelos más adelante).
 \end{shaded}
 
-\section{Modelos ARIMA}
+\section{Modelos AR, MA y ARMA}
 
 En algunos casos un modelo de ruido blanco o de caminata aleatoria es insuficiente para
 capturar el comportamiento de autocorrelación completo de una serie temporal. En estos casos
@@ -665,17 +665,24 @@ Coloquemoslo de forma tal que sea más fácil ver el orden
 <<>>=
 sun_fit |> 
  pivot_longer(cols = everything(), 
- 						  names_to = "modelo",
- 						  values_to = "orden") |> 
+          names_to = "modelo",
+          values_to = "orden") |> 
  tabla(cap = "Modelos ajustados")
 @
 
-
-
-<<results='asis'>>=
-ajustar_modelos(sun_fit, fun_list) |> 
-	print_tablas()
+<<>>=
+c(t1, t2) %<-% ajustar_modelos(sun_fit, fun_list)
 @
+
+<<>>=
+t1 |> tabla(cap = "coeficientes")
+@
+
+
+<<>>=
+t2 |> tabla(cap = "bondad de ajuste")
+@
+
 
 \begin{shaded}
 Aquel modelo con menor AIC será el más parsimonioso y por tanto el que se recomendará
@@ -685,6 +692,13 @@ seleccionar.
 En la tabla de coeficientes vemos que el valor de $\phi = 0.8196$, la constante $c = 8.78$,
 aunque la función original de ARIMA me regresa 48.69. 
 
+\begin{shaded}
+La función de Fable \ti{ARIMA()} utiliza una parametrización alternativa de constantes para
+\ti{stats::arima()} y \ti{forecast::Arima()}. Si bien las parametrizaciones son equivalentes,
+los coeficientes para la constante/media serán diferentes. Ver \url{https://bit.ly/36gbLP3}
+\end{shaded}
+
+
 $$Y_{t} = 48.6986 + 0.8196 \ast Y_{t-1} + \epsilon_{t}$$
 
 
@@ -693,7 +707,7 @@ vamos a graficar los valores ajustados junto con los valores observados (esta es
 aproximación muy simple, más adelante en el temario veremos aproximaciones más sofisticadas
 para evaluar el ajuste del modelo).
 
-Despúes de evaluar y seleccionar el modelo, debemos ajustar únicamente ese, ya que no fue
+Después de evaluar y seleccionar el modelo, debemos ajustar únicamente ese, ya que no fue
 posible (por el momento) realizar el ajuste a partir del objeto que contiene más modelos.
 
 <<>>=
@@ -702,10 +716,10 @@ sun_mod <- sun_tb |>
 @
 
 
-<<>>=
+<<hola>>=
 sun_tb |>
  autoplot(value) +
- autolayer(fitted(report(sun_mod)), series = "Fitted", color = "orange")
+ autolayer(fitted(report(sun_mod)), color = "orange")
 @
 
 Esto da un warning, así que lo mejor será usar la opción Arima
@@ -718,6 +732,349 @@ Esto da un warning, así que lo mejor será usar la opción Arima
 <<>>=
 autoplot(sunspot.year) + autolayer(fitted(fit),series = "Fitted")
 @
+
+Vemos que el modelo logra capturar bastante bien el comportamiento principal de la serie de
+datos de manchas solares.
+
+Podemos incluso realizar una predicción sencilla con este modelo y grafificarla:
+
+<<>>=
+autoplot(forecast(fit))
+@
+
+Vemos que para el período 1989-1999 es de esperar una disminución en el número de manchas
+solares.
+
+\subsection{Comparación de modelos}
+
+Hasta ahora hemos visto cómo ajustar un modelo autorregresivo AR(p) pero a menudo tenemos
+varios modelos candidatos que queremos comparar. Para comparar modelos de series temporales
+podemos utilizar distintos criterios, como el criterio de información de Akaike AIC, el
+criterio de información de Akaike corregido AICc o el criterio de información Bayesiana BIC.
+
+\im{¿Qué es el criterio de información de Akaike (AIC)?}
+
+El AIC ("Akaike’s Information Criterion") sirve para comparar modelos. Este criterio tiene en
+cuenta tanto el ajuste del modelo como su complejidad de acuerdo a la fórmula:
+
+\begin{equation}
+   \bm{AIC = -2 \ast log - likelihood + 2 \ast p}
+   \label{aic2}
+\end{equation}
+
+donde el primer término mide el ajuste (es la devianza) y el segundo la complejidad (p es el
+número de parámetros en el modelo). Es decir, el segundo término es de penalización y evita
+el sobreajuste (i.e. si aumenta el número de parámetros del modelo suele mejorar la bondad
+del ajuste sin implicar una mejoría del modelo).
+
+Existe también el AIC corregido (AICc) que es una variante del AIC para tamaños muestrales
+pequeños (pocos datos).
+
+\im{Cómo se interpreta el AIC}
+
+El AIC se funda en la teoría de la información. Cuando se utiliza un modelo estadístico para
+representar el proceso que generó los datos, la representación casi nunca será exacta; por lo
+que se perderá cierta información al utilizar el modelo para representar el proceso. El AIC
+calcula la cantidad relativa de información perdida por un modelo dado: cuanta menos
+información pierde un modelo, mayor es la calidad de ese modelo. Al estimar la cantidad de
+información perdida por un modelo, el AIC se ocupa de la compensación entre la bondad de
+ajuste del modelo y la simplicidad del modelo. En otras palabras, el AIC se ocupa tanto del
+riesgo de sobreajuste como del riesgo de subajuste.
+
+El valor específico del AIC no nos brinda información, ya que dependerá de las unidades de
+medida de la variable considerada. La utilidad del AIC es en la comparación entre modelos.
+Debemos elegir aquel modelo más parsimonioso que presente menor AIC, considerando que es
+“suficiente” una diferencia de 2 puntos (algo que se desprende de la ecuación del AIC).
+
+El AIC no equivale a significación (p-valor), se plantea dentro de una concepción de la
+estadística distinta y alternativa. El AIC no proporciona una prueba de un modelo en el
+sentido de probar una hipótesis nula , es decir el AIC no puede decir nada acerca de la
+calidad del modelo en un sentido absoluto. Si todos los modelos candidatos encajan mal, el
+AIC no dará ningún aviso de ello.
+
+\im{¿Qué es el Criterio de información bayesiano de Schwarz (BIC)?}
+
+Una medida relacionada es el criterio de información bayesiano de Schwarz:
+
+\begin{equation}
+   \bm{BIC = -2 \ast log - likelihood + log(n) \ast p}
+   \label{bic}
+\end{equation}
+
+dónde  n es el número de observaciones utilizadas para la estimación. Si comparas con la
+ecuación del AIC verás que considera una penalización mayor (log(n) en lugar de 2). Debido a
+la mayor penalización, el modelo elegido por BIC será el mismo que el elegido por AIC o uno
+con menos términos.
+
+\im{Ejemplo}
+
+En el ejemplo anterior estudiamos el comportamiento de la serie anual de manchas solares
+(sunspot.year) desde 1700 a 1988.  Los gráficos de la serie sugerían un modelo
+autorregresivo de orden 1, 2 o 3.
+
+\im{¿Cómo puedes determinar qué modelo AR es más apropiado en la práctica?}
+
+Para comparar los modelos candidatos AR(1), AR(2) y AR(3), primero ajustamos estos 3 modelos:
+
+<<>>=
+(fit1 <- Arima(sunspot.year, order = c(1, 0 , 0)))
+(fit2 <- Arima(sunspot.year, order = c(2, 0 , 0)))
+(fit3 <- Arima(sunspot.year, order = c(3, 0 , 0)))
+@
+
+\begin{shaded}
+Compara estos 3 modelos posibles mediante los estadísticos AIC, AICc y BIC que acabamos de
+definir en la página anterior. La idea principal es que estos indicadores penalizan los
+modelos para un mayor número de parámetros, para evitar el sobreajuste, y se prefieren
+valores más pequeños. Es decir, si el resto de factores permanecen iguales, \textbf{un modelo
+que produce un AIC o BIC más bajo que otro modelo se considera un mejor ajuste.} NOTA: este
+procedimiento también puede ser útil para comparar distintos tipos de modelo, por ejemplo un
+AR con un MA. Más adelante veremos cómo comparar los modelos en función de su capacidad de
+pronóstico. 
+\end{shaded}
+
+\begin{shaded}
+\textbf{Elegimos el modelo más parsimonioso (más sencillo), que es AR(2) en este caso.}
+\end{shaded}
+
+El mejor modelo es aquel con menor AIC y más parsimonioso
+
+\subsection{Modelo de medias móviles (MA)}
+
+Otro modelo para datos estacionarios es el modelo de medias móviles (Moving Average, MA) ,
+que también permite modelar la dependencia temporal de la serie a partir de valores pasados,
+como el AR, pero aquí utiliza los errores del pasado. Es decir, corrige pronósticos futuros
+basados en errores cometidos en pronósticos recientes (que en realidad no se observan).
+
+Al igual que el modelo AR que vimos anteriormente, un modelo de media móvil (moving average
+MA) también puede considerarse como una regresión. Pero para el MA de orden q MA(q), en lugar
+de tomar las observaciones de tiempos anteriores para crear el modelo, tomamos los errores
+del pronóstico de tiempos anteriores.
+
+Es decir, el modelo de media móvil (MA) es un modelo de regresión múltiple con errores en
+retardo como predictores: corrige pronósticos futuros basados en errores cometidos en
+pronósticos recientes.
+
+Descubrimos que los modelos MA también pueden generar un amplio repertorio de patrones según
+los valores de sus parámetros. Hemos visto que existen restricciones de los parámetros de los
+modelos MA para datos estacionarios.
+
+NOTA: (no lo confundas este modelo con el suavizado de medias móviles).
+
+\begin{shaded}
+En una serie estacionaria con un proceso MA puro la ACF se cortará en el retardo q, mientras
+que la PACF decae de manera exponencial o sinusoidal. Es decir, es un modelo de serie
+temporal parsimonioso que se utiliza para dar cuenta de la autocorrelación a muy corto plazo.
+\end{shaded}
+
+Para ajustar un modelo MA(q) utilizamos la función \ti{Arima()} de R, indicándole el orden
+c(0,0,1). El resultado mostrará la estimación de los parámetros del modelo: la/s pendiente/s
+theta (indicada por ma1, ma2, ...), el intercepto (o media) y la varianza del ruido (sigma2).
+También tenemos información sobre el error estándar de estas estimaciones, la verosimilitud
+(Log Lik) y el coeficiente de información de Akaike del modelo (AIC).
+
+Para predecir con este modelo utilizamos la función \ti{forecast()} de R indicándole el
+horizonte de pronóstico con el argumento h.
+
+\im{Identifica el modelo MA adecuado}
+
+Analiza la serie austa del paquete fpp2 que contiene el número anual de visitantes
+internacionales en Australia desde 1980 hasta 2015. Ajusta el modelo adecuado y realiza
+predicciones para el próximo año.
+
+Instrucciones
+
+1. Accede a los datos, realiza los gráficos de la serie y correlogramas.
+
+<<>>=
+data(austa, package = "fpp2")
+@
+
+<<fig.width=7, fig.asp=0.7>>=
+austa |> 
+ as_tsibble(index = index) |> 
+ gg_tsdisplay(austa, plot_type = "partial")
+@
+
+
+Según los resultados, ¿La serie es estacionaria? Si fuera necesario transformar la serie,
+¿Qué tipo de transformación utilizarías?
+
+\begin{shaded}
+En el gráfico de la serie original debes observar si la serie es estacionaria, si existen
+tendencias, estacionalidad o varianza no constante. Las series con tendencias se pueden
+diferenciar para volverlas estacionarias. La diferenciación corresponde al parámetro d del
+modelo ARIMA.
+\end{shaded}
+
+Según lo observado en los correlogramas ¿Qué tipo de modelo deberíamos ajustar a los datos
+originales?
+
+Recuerda cómo identificar un modelo AR o MA a partir de los correlogramas.
+
+\begin{figure}[H]
+\includegraphics[width = \linewidth]{ide}
+\caption{¿Cómo identificar modelos AR y MA a partir de los correlogramas?}
+   \label{fig:arma}
+\end{figure}
+
+2. Ajusta el modelo candidato
+
+<<>>=
+fit <- Arima(austa, order = c(0, 0, 1))
+@
+
+3. Finalmente grafica los pronósticos para el próximo año según el modelo elegido.
+
+<<>>=
+autoplot(austa) + autolayer(fitted(fit),series = "Fitted")
+@
+
+
+<<>>=
+autoplot(forecast(fit, h = 12))
+@
+
+
+\subsection{Modelo ARMA}
+
+Es hora de centrar nuestra atención en la combinación de los dos modelos anteriores. Cuando
+juntamos los modelos AR y MA obtenemos un modelo autorregresivo de medias móviles ARMA(p,q),
+donde las últimas p observaciones y los últimos q errores se usan como predictores en la
+ecuación.
+
+Un modelo autorregresivo de medias móviles ARMA(p,q) se puede pensar como una regresión donde
+las últimas \emph{p} observaciones y los últimos \emph{q} errores se usan como predictores en
+la ecuación.
+
+Al ser una combinación de AR y MA, el modelo ARMA \textbf{intenta capturar 2 aspectos} al modelar series de tiempo:
+ \begin{itemize}[itemsep=1ex]
+  \item su propio comportamiento pasado como entradas para el modelo, el componente
+  autorregresivo AR.
+  \item la información del ruido o "errores" de una serie que se arrastra en el tiempo, el
+  componente de medias móviles MA.
+ \end{itemize}
+
+NOTA: El modelo ARMA (p, q) es una combinación lineal de dos modelos lineales y, por lo
+tanto, sigue siendo lineal en sí mismo.
+
+Una de las características clave del modelo ARMA es que es parsimonioso y redundante en sus
+parámetros. Es decir, un modelo ARMA a menudo requerirá menos parámetros que un modelo AR (p)
+o MA (q) solo.
+
+\im{Ejercicios}
+
+Ahora que conoces varios modelos de series temporales, tienes una idea de cómo se comporta
+cada uno y cuándo es útil.
+
+Haz coincidir los siguientes gráficos con los modelos que hemos visto: modelos de ruido
+blanco (WN), caminata aleatoria (RW), autorregresivo (AR), medias móviles (MA) y
+autorregresivo de medias móviles (ARMA).
+
+\begin{figure}[H]
+\includegraphics[width = \linewidth]{ej1}
+\caption{Identificar series}
+   \label{fig:ej1}
+\end{figure}
+
+ \begin{itemize}[itemsep=1ex]
+  
+  \item Vemos que B y C son muy similares. Esto se debe a que RW es un caso especial de AR.
+  
+  \item Tanto en B como en C vemos \textbf{persistencia:} autocorrelaciones significativas
+  para un gran número de rezagos.
+  
+  \item En B vemos que su ACF vuelve a cero más rápidamente que el de C. Esto es
+  característico de un modelo AR.
+  
+  \item El PACF de un AR se corta en el retardo \emph{p}, esto lo vemos en B.
+  \item El ACF cae de manera exponencial o sinusoidal para un modelo AR. Esto lo vemos en B
+  \item El PACF de un modelo RW se corta en el retardo 1
+  
+  
+  \item El ACF de un MA debe tener una autocorrelación que se corta en el retardo \emph{q},
+  mientras que su PACF decae de manera exponencial o sinusoidal. Este es el caso de A.
+  
+  
+  \item En ACF y PACF de WN deben tener una autocorrelación de aproximadamente cero en todos
+  los retardos. Este es el caso de D
+  
+  
+  \item Tanto el ACF como el PACF decaen para los modelos ARMA y la serie se comporta como
+  una mezcla de MA y AR.
+ \end{itemize}
+
+
+\begin{shaded}
+Recuerda que el modelo RW es un caso especial del AR. Ambos generalmente muestran
+persistencia, pero el modelo AR vuelve a la media. Es decir, RW y AR generalmente muestran
+una gran autocorrelación para muchos retardos (decaimiento), pero el ACF de un AR vuelve a
+cero más rápidamente que el del RW. El PACF de un AR se corta en el retardo \emph{p},
+mientras que el del RW se corta en 1 retardo. El modelo MA muestra una dependencia a muy
+corto plazo, también vuelve a la media muy rápidamente. El ACF de MA debe tener una
+autocorrelación que se corta en el retardo \emph{q}, mientras que su PACF decae. El modelo WN
+no debe mostrar un patrón obvio, y por tanto el ACF y PACF de WN deben tener una
+autocorrelación de aproximadamente cero en todos los retardos. Por último, tanto el ACF como
+el PACF decaen para los modelos ARMA y la serie se comporta como una mezcla de MA y AR.
+\end{shaded}
+
+
+ \begin{itemize}[itemsep=1ex]
+  \item (A) RW, (B) MA, (C) WN, (D) AR, (E) ARMA
+  \item (A) MA, (B) AR, (C) RW, (D) WN, (E) ARMA
+  \item \hl{(A) MA, (B) AR, (C) RW, (D) WN, (E) ARMA}
+  \item (A) MA, (B) RW, (C) AR, (D) WN, (E) ARMA
+ \end{itemize}
+
+
+\begin{figure}[H]
+\includegraphics{ej2}
+\caption{Respuesta Correcta}
+   \label{fig:rcorrecta}
+\end{figure}
+
+
+\section{ARIMA}
+
+Los modelos ARMA (los AR y los MA) solo pueden funcionar con datos estacionarios, sin
+embargo, la gran mayoría de los datos del mundo real no son estacionarios. En estos casos
+necesitaremos primero diferenciar la serie de datos para estacionarizarla. Esto nos lleva a
+los \textbf{modelos ARIMA que significa un modelo ARMA integrado (integrar es lo opuesto a
+diferenciar).}
+
+
+<<>>=
+data(usnetelec, package = "expsmooth")
+@
+
+<<>>=
+ggtsdisplay(usnetelec)
+@
+
+Vemos una tendencia creciente, por lo cual la serie no es estacionaria y por lo tanto sería
+necesario diferenciarla.
+
+<<>>=
+(fit <- auto.arima(usnetelec))
+@
+
+\begin{shaded}
+Vemos que los datos se han diferenciado una vez y luego en el primer dos para el orden
+\emph{p} de la parte autorregresiva nos dice que se han utilizado dos observaciones pasadas y
+en el orden \emph{q} para la parte de medias móviles indica que se han utilizado dos errores
+pasados en la ecuación. Cuando tomamos diferencias en la series el coeficiente C se suele
+llamar deriva (\emph{drift}), por eso se ve ahora en el resultado una columna con este
+término.
+\end{shaded}
+
+Para ahorrar tiempo puedes probar tu mismo algunos modelos o seleccionar la opción
+\ti{trace = TRUE} para ver una lista de los modelos posibles, junto con su valor de AIC.
+
+<<>>=
+auto.arima(usnetelec, trace = TRUE)
+@
+
+
 
 
 

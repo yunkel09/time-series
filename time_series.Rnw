@@ -398,14 +398,15 @@ knit_hooks$set(document = function(x) {sub('\\usepackage[]{color}',
  import::from(colorblindr, scale_fill_OkabeIto, palette_OkabeIto)
  import::from(conectigo, cargar_fuentes, conectar_msql)
  import::from(lubridate, .except = c("intersect", "setdiff", "union"))
- import::from(forecast, ggAcf, ggPacf, Arima)
+ # import::from(equatiomatic, extract_eq)
+ import::from(forecast, ggAcf, ggPacf, Arima, forecast, ggtsdisplay, auto.arima)
  import::from(DBI, dbDisconnect)
  import::from(ggpmisc, stat_peaks, stat_valleys, stat_correlation)
  import::from(ggpp, position_nudge_keep)
  import::from(dbplyr, in_schema)
 
  # cargar paquetes en el que sabemos necesitamos todas las opciones
- pacman::p_load(scales, fpp3, tidyverse)
+ pacman::p_load(scales, equatiomatic, fpp3, tidyverse)
  # cargar las fuentes a utilizar
  cargar_fuentes()
  
