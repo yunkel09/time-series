@@ -399,7 +399,8 @@ knit_hooks$set(document = function(x) {sub('\\usepackage[]{color}',
  import::from(conectigo, cargar_fuentes, conectar_msql)
  import::from(lubridate, .except = c("intersect", "setdiff", "union"))
  # import::from(equatiomatic, extract_eq)
- import::from(forecast, ggAcf, ggPacf, Arima, forecast, ggtsdisplay, auto.arima)
+ import::from(forecast, ggAcf, ggPacf, Arima, forecast, 
+ 				  ggtsdisplay, auto.arima, checkresiduals, tsCV)
  import::from(DBI, dbDisconnect)
  import::from(ggpmisc, stat_peaks, stat_valleys, stat_correlation)
  import::from(ggpp, position_nudge_keep)
@@ -459,20 +460,20 @@ graficar <- function(.df, vector, .brk) {
 # agregar información en los valles y picos
 agregar_info <- function(gg_object) {
  gg_object +
-  stat_peaks(geom = "point",   span = 11, color = "red",  size = 0.7) +
+  stat_peaks(geom = "point", span = 11, color = "red", size = 0.7) +
   stat_valleys(geom = "point", span = 11, color = "blue", size = 0.7) +
-  stat_peaks(geom        = "text",
-             span        = 11,
-             color       = "red",
-             vjust       = 0,
-             hjust       = -0.5,
+  stat_peaks(geom = "text",
+             span = 11,
+             color = "red",
+             vjust = 0,
+             hjust = -0.5,
              x.label.fmt = "%b",
              size = 1.5) +
-  stat_valleys(geom        = "text",
-               span        = 11,
-               color       = "blue",
-               vjust       = 0,
-               hjust       = -1,
+  stat_valleys(geom = "text",
+               span = 11,
+               color = "blue",
+               vjust = 0,
+               hjust = -1,
                x.label.fmt = "%b",
                size = 1.5)
 }
@@ -508,6 +509,7 @@ print_tablas <- function(lista_tablas) {
 
 % aquí va la portada
 
+
 % \renewcommand{\contentsname}{Índice}
 % \tableofcontents
 
@@ -518,7 +520,6 @@ print_tablas <- function(lista_tablas) {
 
 
 % aquí van las secciones
-
 <<child='secciones/01_teoria.Rnw'>>=
 
 @

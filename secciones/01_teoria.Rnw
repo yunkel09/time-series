@@ -1047,7 +1047,7 @@ diferenciar).}
 data(usnetelec, package = "expsmooth")
 @
 
-<<>>=
+<<fig.width=7, fig.asp=0.7>>=
 ggtsdisplay(usnetelec)
 @
 
@@ -1073,6 +1073,491 @@ Para ahorrar tiempo puedes probar tu mismo algunos modelos o seleccionar la opci
 <<>>=
 auto.arima(usnetelec, trace = TRUE)
 @
+
+\im{Ejercicios}
+
+Muchos de los modelos de series temporales que discutimos hasta ahora pueden explicarse
+fácilmente mediante el modelo ARIMA. Indica a continuación cómo formularías los siguientes
+modelos:
+
+ \begin{enumerate}[letras]
+   \item Ruido blanco (WN)
+   \item Caminata aleatoria (RW)
+   \item Autorregresivo (AR)
+   \item De media móvil (MA)
+ \end{enumerate}
+
+  \begin{enumerate}[numeros]
+   \item ARIMA (p, 0, 0)
+   \item ARIMA (0, 0, 0)
+   \item ARIMA (0, 0, q)
+   \item ARIMA (0, 1, 0)
+ \end{enumerate}
+
+Respuesta \hl{A-2, B-4, C-1, D-3}
+
+Recuerda que el modelo ARIMA tiene argumentos p (orden del componente autorregresivo), d
+(diferenciación -primeras diferencias- de la serie) y q (orden del componente de media
+móvil): ARIMA(p,d,q).
+
+\im{Ejercicios}
+
+Vamos a encontrar un modelo ARIMA para los datos de usuarios conectados de un servidor de
+internet registrados cada minuto durante 100 minutos. Los datos internet se encuentran en el
+paquete fma.
+
+<<>>=
+i <- fma::internet
+@
+
+1. Grafica la serie junto con sus correlogramas
+
+<<fig.width=7, fig.asp=0.7>>=
+ggtsdisplay(i)
+@
+
+¿Qué observas? ¿la serie es estacionaria? 
+
+\begin{shaded}
+La serie no es estacionaria. 
+\end{shaded}
+
+Si fuera necesario, ¿qué transformación utilizarías para estacionarizarla?. 
+
+\begin{shaded}
+Aplicaría una primera diferencia.
+\end{shaded}
+
+Según el ACF y PACF, ¿qué tipo de modelo ARIMA ajustarías a los datos?
+
+\begin{shaded}
+Vemos \textbf{persistencia} en el ACF
+\end{shaded}
+
+
+Encuentra un modelo ARIMA adecuado para el conjunto de datos internet y guardarlo en un
+objeto llamado fit1.
+
+<<>>=
+(fit_1 <- auto.arima(i, trace = TRUE))
+@
+
+¿Qué modelo es seleccionado? ¿Se corresponde a lo que habías observado en los gráficos
+anteriores?
+
+\begin{shaded}
+No, no se corresponde.
+\end{shaded}
+
+Modifica los argumentos de la función de ajuste para obtener mayor flexibilidad en la
+búsqueda de modelos.
+
+<<>>=
+(fit_2 <- auto.arima(i, stepwise = FALSE, trace = FALSE))
+@
+
+¿Qué modelo es seleccionado? ¿Es mejor que el modelo anterior? ¿por qué?
+
+\begin{shaded}
+No, no es mejor que el modelo anterior porque requiere un modelo autorregresivo de orden 3.
+\end{shaded}
+
+Finalmente, grafica los pronósticos para la próxima media hora. Establece el argumento h en
+consecuencia.
+
+<<>>=
+autoplot(forecast(fit_2, h = 30))
+@
+
+\section{SARIMA}
+
+Modelos automáticos ARIMA para series temporales estacionales
+Como vimos en el video, la función auto.arima() también funciona con datos estacionales. 
+
+En este ejercicio, utilizarás esta función para modelar y pronosticar los datos h02 del
+paquete fpp2, que contienen información sobre las ventas mensuales de medicamentos con
+corticosteroides en Australia.
+
+La salida corresponderá a los parámetros (p, d, q)(P, D, Q)[m]
+
+\im{Instrucciones}
+
+ \begin{enumerate}[numeros]
+   \item Comienza con un gráfico de los datos h02 para verificar que tenga una varianza
+   estable.
+   \item Ajusta un modelo ARIMA estacional con lambda = 0. Guarda el resultado en un objeto
+   fit.
+   \item Interpreta los resultados. ¿Qué niveles de diferenciación se usaron en el modelo?
+   ¿Cuál es el número de primeras diferencias d y cuál el número de diferencias estacionales
+   D?
+   \item Grafica los pronósticos para los próximos 2 años utilizando el modelo ajustado.
+   Selecciona h en consecuencia.
+ \end{enumerate}
+
+<<>>=
+h <- fpp2::h02
+@
+
+<<fig.width=7, fig.asp=0.7>>=
+ggtsdisplay(h)
+@
+
+<<>>=
+(fit <- auto.arima(h))
+@
+
+La parte no estacional del modelo incluye una diferenciación (primeras diferencias) de la
+serie, un componente autorregresivo de orden 4, y un componente de medias móviles de orden 1.
+
+La parte estacional del modelo incluye una diferenciación estacional de la serie y un
+componente de medias móviles estacional de orden 2.
+
+Los datos son mensuales, por lo cual m=12.
+
+\begin{shaded}
+Se ve una primer diferencia en el parámetro \emph{d}.  Con 2 retardos AR y 1 errores con
+retardo para las medias móviles. Se ven que hay una diferencia estacional $D$ y 2 errores
+con retardo estacional MA. El número de observaciones es de 12
+\end{shaded}
+
+<<fig.width=7, fig.asp=0.7>>=
+autoplot(forecast(fit, h = 24))
+@
+
+Observamos cómo las partes estacionales del modelo parece que han capturado bastante bien la
+estacionalidad.
+
+\section{Diagnóstico}
+
+Una forma de verificar si nuestro modelo es bueno es tratar de predecir lo que ya hemos visto
+y verificar que capturamos toda la información de los datos, que no cometemos demasiados
+errores.
+
+Para diagnosticar un modelo y evaluar si tiene sentido realizar predicciones con él, es
+importante verificar siempre que los residuos se comporten bien (es decir, que no tengan
+valores atípicos o patrones) y que se parezcan al ruido blanco:
+
+
+ \begin{itemize}[itemsep=1ex]
+  \item no correlacionado
+  \item centrado en media cero
+ \end{itemize}
+
+Además, los intervalos de predicción se calculan suponiendo que los residuos:
+
+ \begin{itemize}[itemsep=1ex]
+  \item tienen varianza constante
+  \item y distribución normal
+ \end{itemize}
+
+Una función conveniente para usar para verificar estos supuestos es la \ti{checkresiduals()}.
+Esta función produce un gráfico de tiempo, un gráfico de ACF, un histograma y una prueba de
+Ljung-Box en los residuos.
+
+<<>>=
+(fit_good <- auto.arima(lh))
+@
+
+<<fig.width=7, fig.asp=0.7>>=
+checkresiduals(fit_good)
+@
+
+\begin{shaded}
+En este ejemplo la prueba muestra un p-valor por encima del umbral del 0.05 con lo cual
+decimos que los residuos son independientes, es decir, no muestran autocorrelación, se parece
+a lo que cabría de esperar del ruido blanco. Esto también se confirma mirando la función de
+autocorrelación y además el histograma se ve bastante cercano a la curva normal, aunque
+posiblemente haya algo de asimetría y algún valor atípico en el lado derecho de la
+distribución.
+\end{shaded}
+
+Recuerda entonces: \textbf{debes verificar tus residuos antes de realizar predicciones con
+tu modelo} 
+
+1. La normalidad de los residuos facilita el cálculo de los intervalos de predicción, pero no
+es esencial. 2. Los pequeños residuos pueden ser una señal de que los datos de entrenamiento
+se han sobreajustado. 3. Un buen ajuste implica que los residuos no estén correlacionados,
+estén centrados en media cero y (es deseable) que tengan varianza constante.
+
+\section{Predicción}
+
+Las predicciones son útiles en muchas situaciones para una planificación efectiva y
+eficiente, cualesquiera que sean las circunstancias o los horizontes de tiempo involucrados.
+Podemos necesitar calcular pronósticos con varios años de anticipación (para el caso de
+inversiones de capital), o solo unos minutos antes (en telecomunicaciones).
+
+Aunque hemos calculado predicciones con los modelos ARIMA en ejemplos anteriores, aún no
+hemos explicado cómo se obtienen. En este vídeo discutiremos qué son las predicciones, los
+intervalos de predicción, errores de predicción, la precisión y el sesgo.
+
+
+Hemos discutido algunos conceptos claves sobre las predicciones y los intervalos de
+predicción:
+
+ \begin{itemize}[itemsep=1ex]
+  \item La predicción de un modelo es la media (o la mediana) de los posibles valores futuros
+  para esta serie.
+  \item Los intervalos de predicción que son los percentiles de estos posibles valores
+  futuros.
+ \end{itemize}
+
+Por defecto se calculan los intervalos de predicción al 80\% (la región azul oscura sombreada)
+y 95\% de confianza (la región celeste sombreada).
+
+Un modelo que ajusta bien a tus datos no necesariamente hará buenos pronósticos,
+\textbf{debemos verificar el rendimiento de la predicción en un nuevo conjunto de datos.}
+Llamamos:
+
+ \begin{itemize}[itemsep=1ex]
+  \item Las observaciones utilizadas para construir sus pronósticos se llaman conjunto de
+  entrenamiento. 
+  \item Las observaciones ocultas restantes forman el conjunto de prueba, y se utilizan
+  verificar la calidad de las predicciones.
+ \end{itemize}
+
+Calculamos la precisión de nuestro método utilizando los errores de predicción (las
+diferencias entre las observaciones del conjunto de datos de prueba y los pronósticos
+puntuales).
+
+Los errores de predicción se diferencian de los residuos (las diferencias entre las
+observaciones del conjunto de datos de entrenamiento y los pronósticos puntuales).
+
+Discutimos las diferencias entre la precisión y el sesgo de una predicción.
+
+\section{Precisión de la predicción}
+
+\im{Criterios de evaluación de modelos de serie temporal}
+
+  \begin{enumerate}[numeros]
+   \item \textbf{Evaluación del modelo basado en la precisión de sus predicciones:} Divide tu
+   conjunto de datos en 2, construyes el modelo con uno de ellos, luego predices los
+   resultados con el resto del conjunto de datos y calculas la diferencia entre lo observado
+   y lo predicho por el modelo. El modelo con menor error será considerado como un mejor
+   modelo predictivo. Finalmente podrías realizar validación cruzada considerando múltiples
+   particiones de los datos.
+   \item \textbf{Evaluación del modelo basado en su bondad de ajuste:} Puedes comparar
+   modelos mediante alguna métrica de "performance" (e.g. AIC, AICc o BIC). Lo que realizas
+   básicamente es controlar si al agregar nuevos términos al modelo mejora.
+ \end{enumerate}
+
+Hay varias formas de \textbf{medir la precisión de una predicción:}
+
+ \begin{itemize}[itemsep=1ex]
+  \item podemos tomar el promedio de los errores en valor absoluto, o error absoluto medio
+  (\textbf{MAE}). Se toma el valor absoluto para que los errores positivos y negativos no se
+  cancelen.
+  \item El promedio de los errores al cuadrado, o error cuadrático medio \textbf{MSE}. 
+  \item O su raíz cuadrada que es el estadístico \textbf{RMSE}. Al elevar las diferencias al
+  cuadrado los errores positivos y negativos no se cancelan.
+  \item El promedio del error absoluto en porcentaje, o \textbf{MAPE}
+  \item O escalar el error absoluto promedio, para obtener el \textbf{MASE}
+ \end{itemize}
+
+En todos los casos un valor pequeño indica una mejor predicción.
+
+La función \ti{accuracy()} calcula todas estas medidas y más.
+
+Recuerda que en la mayoría de los casos estaremos interesados en las medidas de error del
+conjunto de prueba, que se basan en el \textbf{error de predicción}. Las medidas de error del
+conjunto de entrenamiento se basan en los \textbf{residuos}.
+
+\im{Recuerde}
+
+\begin{shaded}
+La normalidad de los residuos facilita el cálculo de los intervalos de predicción, pero no es
+esencial. 2. Los pequeños residuos pueden ser una señal de que los datos de entrenamiento se
+han sobreajustado. 3. Hacer un modelo más complicado a veces puede ser útil, pero puede
+empeorar las predicciones.
+\end{shaded}
+
+\im{Pros y contras de las medidas de precisión de la predicción}
+
+La medición de la precisión de la predicción (o su error) no es una tarea fácil ya que no hay
+un único indicador útil para todos los problemas.
+
+Primero recuerda las medidas de precisión de la predicción que hemos visto en el vídeo
+anterior.
+
+\begin{figure}[H]
+\includegraphics[width = \linewidth]{accuracy}
+\caption{Medidas de precisión}
+   \label{fig:precision}
+\end{figure}
+
+En esta entrada veremos pros y contras de las medidas de precisión de la predicción para que
+puedas seleccionar la más adecuada para resolver tu problema
+
+ \begin{itemize}[itemsep=1ex]
+ 
+  \item Los valores de MAE o RMSE expresan el error de la predicción del modelo en las
+  unidades de la variable de interés (la respuesta) y por tanto son sencillos de interpretar.
+  Ten en cuenta que entonces sus valores dependen de la escala de los datos, y pueden variar
+  de 0 a $\infty$ , son indiferentes a la dirección de los errores y son insensible a
+  desviaciones constantes o proporcionales.
+  
+  \item El resultado RMSE siempre será mayor o igual al MAE, y dependerá del tamaño de la
+  muestra. RMSE tiende a ser cada vez más grande que MAE a medida que aumenta el tamaño de la
+  muestra de prueba. Por ello, debemos tener cuidado al comparar los valores de RMSE en
+  muestras de distinto tamaño.
+  
+  \item MSE es muy sensibles a los valores extremos, porque al tomar los errores al
+  cuadrados, otorgan un peso relativamente alto a los grandes errores, es decir, puede ser
+  más útil cuando no deseamos obtener grandes errores. RMSE tiene la ventaja de penalizar los
+  errores grandes más, por lo que puede ser más apropiado en algunos casos.
+  
+  \item Los errores porcentuales MAPE tienen la ventaja de estar libres de unidades y, por lo
+  tanto, se usan con frecuencia para comparar los rendimientos de predicción entre conjuntos
+  de datos. Sin embargo, solo sirve si nuestros datos son todos positivos y no contienen
+  muchos ceros o valores pequeños. Esto es debido a que MAPE divide el error absoluto entre
+  los datos reales, los valores que se aproximan a 0 pueden aumentar significativamente el
+  MAPE. MAPE también supone que hay un cero natural, por lo que no se puede usar con la
+  temperatura.
+  
+  \item Los errores de escala MASE fueron propuestos por Hyndman y Koehler (2006) como una
+  alternativa al uso de errores porcentuales al comparar la precisión de la predicción entre
+  series con diferentes unidades. Es como MAE pero está escalado para que pueda compararse
+  ente series.
+  
+  \item El cociente entre el RMSE y el MAE permite determinar hasta qué punto la existencia
+  de valores extremos está afectando al modelo.
+  
+ \end{itemize}
+
+\im{Optimización}
+
+ \begin{itemize}[itemsep=1ex]
+  \item la optimización de MSE tiene como objetivo producir una predicción que sea correcta
+  en promedio y, por lo tanto, imparcial.
+  
+  \item para optimizar MAE, la predicción debe ser tantas veces mayor que el valor de la
+  serie como menor. En otras palabras, estamos buscando un valor que divida nuestro conjunto
+  de datos en dos partes iguales. Esta es la definición exacta de la mediana.
+  
+  \item la optimización de RMSE buscará ser correcta en promedio
+  
+  \item Por lo tanto la diferencia entre MAE y RMSE es que el primero apunta a la mediana, y
+  el segundo apunta a la media. MAE brinda protección contra los valores atípicos, mientras
+  que RMSE brinda la seguridad de obtener un pronóstico imparcial.
+  
+  \item MAPE promueve un pronóstico muy bajo, ya que asigna una gran importancia a los
+  errores de pronóstico cuando los valores de la serie son bajos
+  
+ \end{itemize}
+ 
+Cada técnica tiene algunos beneficios y algunos riesgos, como veremos en las páginas
+siguientes. Solo la experimentación revelará qué técnica funciona mejor para un conjunto de
+datos.
+
+\im{Validación del modelo}
+
+La semana pasada comparamos 3 modelos de series temporales (AR(1), AR(2) y AR(3)) para los
+datos anuales de manchas solares (sunspot.year) desde 1700 a 1988 según los coeficientes AIC,
+AICc y BIC.
+
+Divide los datos en un conjunto de entrenamiento y otro de prueba y compara los modelos según
+su capacidad predictiva e indica cuál de las siguientes afirmaciones es VERDADERA.
+
+\im{Instrucciones}
+
+1. Crea los conjuntos de entrenamiento y prueba.
+
+Los datos sunspot.year vienen precargados en R. Primero vemos el número de datos que tenemos
+para decidir cuántas observaciones destinar a cada conjunto de datos.
+
+<<>>=
+length(sunspot.year)
+@
+
+Tenemos 289 observaciones. Usualmente se destina el 80\% de las observaciones al conjunto de
+entrenamiento y el 20\% restante al de prueba, con lo cual utilizaremos las primeras 232
+observaciones para el conjunto de entrenamiento.
+
+Sustituye los siguientes espacios en blanco por las funciones y argumentos adecuados para crear los conjuntos de entrenamiento y prueba.
+
+<<>>=
+train <- subset(sunspot.year, end = 232)
+test <- subset(sunspot.year, start = 232)
+@
+
+<<fig.width=7, fig.asp=0.6>>=
+autoplot(train) + autolayer(test)
+@
+
+
+2. Ajusta los 3 modelos candidatos sobre el conjunto de datos adecuado.
+
+<<>>=
+fit1 <- Arima(train, order = c(1, 0, 0)) # modelo AR(1)
+fit2 <- Arima(train, order = c(2, 0, 0)) # modelo AR(1)
+fit3 <- Arima(train, order = c(3, 0, 0)) # modelo AR(1)
+@
+
+3. Evalúa la precisión de las predicciones de cada modelo sobre el conjunto de datos
+adecuado.
+
+<<>>=
+accuracy(forecast(fit1), test)
+accuracy(forecast(fit2), test)
+accuracy(forecast(fit3), test)
+@
+
+\hl{El modelo que mejor predice nuestra serie es AR(3)}
+
+\section{Validación Cruzada}
+
+Para ver qué tan bien predice un modelo no podemos guiarnos por el diagnóstico del ajuste del
+modelo ya que es fácil sobreajustar los datos  incluyendo más términos en el modelo. Las
+predicciones del modelo sobre nuevos datos generalmente empeorarán a medida que se agreguen
+términos de orden superior en el modelo.
+
+La validación cruzada (CV) de series temporales permite medir el rendimiento predictivo del
+modelo para un gran número de conjuntos de datos de entrenamiento y prueba.
+
+Con la función \ti{tsCV()} de R, podemos calcular:
+
+ \begin{itemize}[itemsep=1ex]
+  \item Pronósticos de un solo paso.
+  \item Pronósticos de varios pasos hacia adelante.
+ \end{itemize}
+
+Así, por ejemplo, podemos evaluar los modelos mediante el error cuadrático medio para
+diferentes horizontes de pronóstico basado en la CV de series de tiempo.
+
+
+\im{Realiza una validación cruzada para el siguiente modelo}
+
+La función \ti{tsCV()} calcula los errores de validación cruzada de series temporales. 
+
+Aquí vas a analizar los datos goog mediante validación cruzada con los siguientes pasos:
+
+Usando los datos goog y la función de predicción naive(), calcula los errores obtenidos con
+validación cruzada hasta 8 pasos por delante.
+
+Calcula los errores por validación cruzada hasta 8 pasos hacia adelante
+
+<<>>=
+goog <- fpp2::goog
+@
+
+debes especificar la serie temporal (y), el método de pronóstico (forecastfunction) y el
+horizonte de pronóstico (h). 
+
+<<>>=
+e <- tsCV(goog, forecastfunction = naive, h = 8)
+@
+
+<<>>=
+mse <- colMeans(e^2, na.rm = TRUE)
+@
+
+<<fig.width=7, fig.asp=0.5>>=
+data.frame(h = 1:8, MSE = mse) %>%
+  ggplot(aes(x = h, y = MSE)) +
+  geom_point() +
+  drako
+@
+
+
 
 
 
