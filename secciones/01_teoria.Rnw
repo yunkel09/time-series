@@ -1543,19 +1543,152 @@ debes especificar la serie temporal (y), el método de pronóstico (forecastfunc
 horizonte de pronóstico (h). 
 
 <<>>=
-e <- tsCV(goog, forecastfunction = naive, h = 8)
+goog_ts <- fpp2::goog |> as_tsibble()
+@
+
+
+<<>>=
+goog_tr <- goog_ts |> stretch_tsibble(.init = 800, .step = 1)
+@
+
+
+<<>>=
+fc <- goog_tr |> 
+    model(NAIVE(value)) |> 
+    forecast(h = 8) |> 
+    group_by(.id) |> 
+    mutate(h = row_number()) |> 
+    ungroup() |> 
+    as_fable(response = "value", distribution = value)
+@
+
+
+<<>>=
+fc_tb <- fc %>%
+    accuracy(goog_ts, by = c("h", ".model")) %>%
+    mutate(MSE = RMSE^2) |> 
+    select(h, .model, RMSE, MSE)
 @
 
 <<>>=
-mse <- colMeans(e^2, na.rm = TRUE)
+fc_tb |> 
+    ggplot(aes(x = h, y = MSE)) +
+    geom_point()
 @
 
-<<fig.width=7, fig.asp=0.5>>=
-data.frame(h = 1:8, MSE = mse) %>%
-  ggplot(aes(x = h, y = MSE)) +
-  geom_point() +
-  drako
+\section{Procedimiento General}
+
+  \begin{enumerate}[numeros]
+    \item Grafica los datos
+  	\item Grafica el ACF/PACF
+  	\item Ajusta un modelo ARIMA
+  	\item Diagnostica el modelo
+  	\item Predice en un nuevo conjunto de prueba.
+  	\item Evalúa la precisión de las predicciones.
+ \end{enumerate}
+
+\subsection{Paso 1: Graficar}
+
+Grafica los datos e identifica cualquier observación inusual. Comprenda los patrones y si es
+necesario, transforma los datos (usando una transformación logarítmica por ejemplo) para
+estabilizar la varianza.
+
+Cantidad de hormona luteinizante en muestras de sange tomadas  cada 10 minutos.
+
+<<fig.width=6.29, fig.asp=0.6>>=
+autoplot(lh)
 @
+
+Vemos en general que no hay datos demasiados inusuales y de que el comportamiento es
+bastante estacionario con lo cual podemos continuar.
+
+\subsection{Paso 2: Grafica el ACF/PACF}
+
+¿Qué tipo de modelo ARIMA puede ser apropiado?
+
+<<fig.width=6.29, fig.asp=0.6>>=
+ggtsdisplay(lh)
+@
+
+\begin{shaded}
+En este caso como ambas funciones se cortan a retardos muy bajos, no nos permitiría detectar
+el orden del modelo. Vamos a ajustar entonces un modelo automático ARIMA.
+\end{shaded}
+
+\subsection{Paso 3: Ajusta un modelo ARIMA}
+
+Primero debemos dividir los datos en un conjunto de entrenamiento y en un conjunto de
+prueba, así podemos evaluar la calidad de nuestras predicciones.  Para ello veamos el largo
+de la serie:
+
+<<>>=
+length(lh)
+@
+
+Entonces como vemos pocas observaciones vamos a tomar un conjunto de entrenamiento con las
+primeras 40 y el conjunto de prueba con las siguientes 8
+
+<<>>=
+lh_train <- subset(lh, end = 40)
+lh_test <- subset(lh, start = 41)
+@
+
+Ahora ajustamos varios modelos ARIMA y automáticamente la función \ti{auto.arima}
+seleccionará el mejor mediante el coeficiente AICc. Puedes seleccionar el modelo por ti
+mismo o utilizar un algoritmo automatizado para ello.
+
+<<>>=
+(fit <- auto.arima(lh_train))
+@
+
+\begin{shaded}
+Obtenemos un modelo propuesto de medias móviles de orden 2 (MA(2))
+\end{shaded}
+
+\subsection{Paso 4: Diagnóstico}
+
+Verificar que los residuos del modelo elegido sean ruido blanco.
+
+<<fig.width=6.29, fig.asp=0.7>>=
+checkresiduals(fit)
+@
+
+\begin{shaded}
+Vemos que los residuos
+\end{shaded}
+
+# TODO: ME QUEDE EN EL PASO 4 MINUTO 2:09
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
