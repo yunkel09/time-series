@@ -259,6 +259,85 @@ Los datos muestran una tendencia y por tanto no son estacionarios.
   
  \end{itemize}
 
+\subsection{Función de autocorrelación ACF y autocorrelación parcial PACF}
+
+\im{¿Cómo se calculan los valores de la función de autocorrelación ACF?}
+
+La autocorrelación es una parte importante del análisis de series de tiempo. Nos ayuda a
+comprender cómo se relaciona cada observación en una serie de tiempo con sus observaciones
+pasadas recientes. Cuando la autocorrelación es alta en una serie de tiempo, resulta fácil
+predecir sus observaciones futuras.
+
+\textbf{La función de autocorrelación ACF calcula la correlación con diferentes retardos.}
+Para una serie temporal $x$ de longitud $n$, consideramos los $n - 1$ pares de observaciones
+separados por una unidad de tiempo. Cada par tiene la forma $(x[t],\;x[t - 1])$ en que $t$ es
+el índice de observación, que variamos de 2 a n en este caso. La autocorrelación de lag-1
+puede estimarse como la correlación muestral de estos pares $(x[t],\;x[t - 1])$, en lag-2 se
+estima para $(x[t],\;x[t - 2])$ y así sucesivamente.
+
+Veamos un ejemplo numérico. Imagina que tenemos la siguiente variable x de valores
+aleatorios:
+
+<<>>=
+set.seed(112)
+x <- rnorm(10) # obtenemos 10 valores aleatorios con distribución normal típica
+@
+
+<<>>=
+ggAcf(x, plot = FALSE)
+@
+
+Ahora vamos a ver cómo se calculan estos valores. El ACF(1), o valor del ACF para el retardo
+1, se calcula como la correlación entre la serie y la serie con 1 tiempo de retardo, así:
+
+<<>>=
+cor(x[-length(x)], x[-1])
+@
+
+Para el retardo 2 calculamos:
+
+<<>>=
+cor(x[-(length(x):(length(x)-1))], x[-c(1:2)])
+@
+
+Obtenemos valores muy cercanos a los de la función ggAcf().
+
+¿Por qué hay diferencia en los valores de los coeficientes de correlación con los valores
+dados por ggAcf? Lag 2 da un valor de -0.3386 mientras que ggAcf muestra -0.231.
+
+Las dos estimaciones difieren ligeramente ya que utilizan escalas ligeramente diferentes en
+el cálculo de la covarianza de la muestra, $1 / (n - 1)$ en el caso de cor() frente a $1 / n$
+en el caso de ggAcf(). Las estimaciones de autocorrelación difieren en un factor de $(n - 1)
+/ n$. Aunque el método ggAcf() proporciona una estimación sesgada, se prefiere en el análisis
+de series de tiempo.
+
+\im{¿Cómo se calculan los valores de la función de autocorrelación parcial PACF?}
+
+El PACF proporciona la correlación parcial de una serie temporal estacionaria con sus propios
+valores en retardos. Veamos de manera general cómo se calcula una correlación parcial.
+
+Imagina que tenemos 3 variables de entrada x1, x2 y x3, y 1 variable de salida Y. La función
+de autocorrelación parcial PACF entre Y y x3 es la correlación entre las variables Y y x3
+teniendo en cuenta cómo ambos están relacionados x1 y x2.
+
+Para comprender cómo Y y x3 están relacionados eliminando el efecto de x1 y x2, realizamos 2
+regresiones como se muestra a continuación:
+
+ \begin{enumerate}[numeros]
+   \item Regresión 1: predice Y a partir de x1 y x2.
+   \item Regresión 2: predice x3 a partir de x1 y x2
+ \end{enumerate}
+
+Cada regresión genera unos residuos, aquello que no se explica por las variables de entrada
+x1 y x2.  La correlación entre estos dos residuos dará la correlación parcial entre las
+variables Y y x3.
+
+Así el PACF calcula la correlación entre Y y x3 luego de eliminar la influencia de las
+variables x1 y x2.
+
+\textbf{Nota:} esta interpretación coincide con la de los parámetros de un modelo de
+regresión. ¡Piénsalo!
+
 \section{Transformaciones}
 
 Hemos visto qué es la estacionariedad y las ventajas que presentan las series estacionarias
@@ -572,6 +651,68 @@ modelos AR para datos estacionarios.
 NOTA: fíjate que el modelo autorregresivo es simplemente una extensión de la caminata
 aleatoria, que incluye términos más atrás en el tiempo.
 
+\im{Parámetros del modelo autorregresivo AR(1)}
+
+Para el modelo AR(1) tenemos la siguiente ecuación:
+
+\begin{equation}
+   \bm{y_{t} = c + \phi_{1}Y_{t-1} + \phi_{2}y_{t-2} + ... + \phi_{p}y_{t-p} + \varepsilon_{t}}
+   \label{ar}
+\end{equation}
+
+donde $c$ es una constante, $\phi$ es el coeficiente de la pendiente y $\varepsilon$ una
+serie de ruido blanco con media 0 y varianza sigma2.
+
+Normalmente restringimos los modelos AR a datos estacionarios, y por tanto también existen
+restricciones sobre los valores de los parámetros. En este caso  $\phi$ solo puede tomar un
+valor entre -1 y 1.
+
+Tenemos algunos casos particulares según los valores de estos parámetros, como se observa en
+el siguiente gráfico.
+
+\begin{figure}[H]
+\includegraphics[width = \linewidth]{ar1}
+\caption{Modelo Autorregresivo}
+   \label{fig:ar1}
+\end{figure}
+
+Entonces:
+
+ \begin{itemize}[itemsep=1ex]
+  
+  \item \textbf{Si la pendiente phi es cero} entonces la serie NO depende de los valores del
+  tiempo anterior, solo depende del valor de la media c y de epsilon que es una serie de
+  ruido blanco con varianza sigma2. La serie será un \textbf{ruido blanco} con media c y
+  varianza sigma2. Es decir, la serie no estará autocorrelacionada.
+  
+  \item \textbf{Si la pendiente phi no es nula}, entonces la serie depende tanto de los
+  valores de la serie en el tiempo anterior como de epsilon, un modelo autor regresivo de
+  orden 1. La serie entonces está autocorrelacionada.
+  
+ \end{itemize}
+
+En este caso, según el valor de phi obtendremos distintos patrones. 
+
+ \begin{itemize}[itemsep=1ex]
+  \item Si phi es un valor alto, tendremos gran autocorrelación
+  \item si phi es un valor negativo tendremos series oscilatorias.
+  \item Si phi = 1 y c = 0, tendremos una serie de caminata aleatoria.
+
+ \end{itemize}
+
+Entonces, el modelo de \textbf{caminata aleatoria (RW)} es un caso especial del modelo
+autorregresivo (AR), en el que el parámetro de pendiente es igual a 1. Recuerde de capítulos
+anteriores que el modelo RW no es estacionario y exhibe una persistencia muy fuerte. Su
+función \textbf{ACF también decae a cero muy lentamente}, lo que significa que los valores
+pasados tienen un impacto duradero en los valores actuales.
+
+Recuerda que el modelo AR estacionario tiene un parámetro de \textbf{pendiente phi entre -1 y
+1}. El modelo \textbf{AR exhibe una mayor persistencia cuando su parámetro de pendiente está
+más cerca de 1, pero el proceso vuelve a su media con bastante rapidez.} Su muestra de
+\textbf{ACF también decae a cero a una velocidad rápida (geométrica)}, lo que indica que los
+valores en el pasado tienen poco impacto en los valores futuros del proceso.
+
+
 \im{¿Cómo identificar y ajustar un modelo AR(p)?}
 
 \begin{shaded}
@@ -858,6 +999,40 @@ pronósticos recientes.
 Descubrimos que los modelos MA también pueden generar un amplio repertorio de patrones según
 los valores de sus parámetros. Hemos visto que existen restricciones de los parámetros de los
 modelos MA para datos estacionarios.
+
+\im{Parámetros del modelo de medias móviles MA(1)}
+
+\begin{equation}
+   \bm{y_{t} = c + \varepsilon_{t} + \theta_{1}\varepsilon_{t-1} + 
+   \theta_{2}\varepsilon_{t-2} + ... + \theta_{q}\varepsilon_{t-q}}
+   \label{ma1}
+\end{equation}
+
+\begin{figure}[H]
+\includegraphics[width = \linewidth]{ma1}
+\caption{Medias Móviles MA(1)}
+   \label{fig:ma1}
+\end{figure}
+
+
+Por lo tanto:
+
+ \begin{itemize}[itemsep=1ex]
+ 
+  \item Si la pendiente es 0 entonces la serie solo depende del valor de la constante c o
+  media y del ruido o error epsilon, por lo cual la serie Y será un ruido blanco con media c
+  y varianza sigma2.
+  
+  \item Si la pendiente es distinta de 0, entonces la serie depende de los errores epsilon de
+  ayer y de hoy. Según el valor de la pendiente theta obtendremos distintos patrones:
+  
+	\begin{itemize}[itemsep=1ex]
+		\item Si theta es un valor alto, tendremos gran autocorrelación, 
+		\item si theta es un valor negativo tendremos series oscilatorias.
+	\end{itemize}
+  
+  
+ \end{itemize}
 
 NOTA: (no lo confundas este modelo con el suavizado de medias móviles).
 
@@ -1654,25 +1829,69 @@ checkresiduals(fit)
 @
 
 \begin{shaded}
-Vemos que los residuos
+Vemos que los residuos no muestran un patrón demasiado evidente. Ninguno de los bastones
+de autocorrelación escapa de los intervalos de confianza y siguen una distribución
+bastante parecida a la distribución normal.
 \end{shaded}
 
-# TODO: ME QUEDE EN EL PASO 4 MINUTO 2:09
 
+<<>>=
+checkresiduals(fit, plot = FALSE)
+@
 
+La prueba además de independencia de los residuos no es rechazada ya que su p-valor es mayor
+al 0.05, por lo cual podemos decir que los residuos son independientes y logramos capturar
+gran parte de la inforamción de los datos.
 
+\subsection{Paso 5: Predecir}
 
+Una vez que los residuos se vean como ruido blanco, realiza predicciones con el modelo.
 
+<<fig.width=6.29, fig.asp=0.7>>=
+autoplot(forecast(fit))
+@
 
+\begin{shaded}
+En principio las predicciones serian que la cantidad de hormona bajaría y luego se estabiliza
+en el tiempo.
+\end{shaded}
 
+\subsection{Paso 6: Predecir en un nuevo conjunto de prueba}
 
+Evalúa la precisión de las predicciones en el conjunto de prueba.
 
+<<>>=
+accuracy(forecast(fit), lh_test)
+@
 
+Vemos los valores de RMSE para el conjunto de prueba que sería de 0.068 puntos o
+porcentualmente tendríamos un error de un 20\% (MAPE) con lo cual nuestro modelo sería bueno
+en el 80\% restante de las predicciones.
 
+\section{Material complementario}
 
+\href{https://bit.ly/3Kdo9hv}{CRAN Task View: Time Series Analysis.}
 
+GRÁFICOS AVANZADOS DE SERIES TEMPORALES
 
+El paquete ggfortify es una extensión de ggplot2 que facilita el trazado de objetos de series
+de tiempo (Horikoshi y Tang 2017) .
 
+Otro paquete interesante es ggpmisc (Aphalo 2017), que proporciona dos métodos útiles para
+objetos de series temporales:
+
+stat\_peaks() encuentra en qué posiciones x se localizan los máximos locales y
+stat\_valleys() encuentra en qué posiciones x se localizan los mínimos locales.
+
+Puedes identificar cambios en la media y / o varianza en una serie de tiempo usando el
+paquete \textbf{changepoint.}
+
+Detectar saltos en un dato utilizando el paquete \textbf{strucchange.}
+
+El paquete feasts permite identificar y visualizar algunas características de las series
+temporales, como la fuerza de la tendencia o la fuerza de la estacionalidad en las series.
+
+También puedes crear gráficos interactivos con el paquete dygraph.
 
 
 

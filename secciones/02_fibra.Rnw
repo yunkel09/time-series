@@ -26,8 +26,9 @@ realizar la consulta y entregarnos lo que necesitamos.
 materiales_criticos <- c("OSP0001440",  # MUFA PARA FIBRA 48 COLOR AZUL
                          "OSP0000111",  # FIBER OPTIC CABLE ADSS FOR 150 METER
                          "OSP0001313",  # FIBER OPTIC CABLE ADSS FOR 150 METER GAPS 48 HILOS
+                         "OSP0001142",
                          "OSP0000193",  # MUFA PARA FIBRA 48 HILOS VERTICAL     
-                         "ACC005283")	 # MUFA ONE
+                         "ACC005283")	  # MUFA ONE
 @
 
 Para cada tipo de material, hay dos tipos de consumo:
@@ -108,6 +109,24 @@ por_mes <- materiales_long |>
 <<>>=
 por_mes |> as_tibble() |> select(-date) |> slice_sample(n = 5) |> tabla("Agrupado por Mes")
 @
+
+<<>>=
+vk <- por_mes |> filter(material == "vkom")
+brk <- hist(vk$cantidad, plot = F)$breaks
+vk |> 
+ ggplot(aes(x = cantidad, y = ..density..)) +
+ geom_histogram(fill = "#56B4E9", size = .2, breaks = brk, color = "white") +
+ geom_density(size = 1) +
+ # geom_vline(xintercept = 0, color = "black", linetype = "dashed") +
+ # geom_vline(xintercept = res[["media"]], color = "black", linetype = "dashed") +
+ scale_x_continuous(name = "Cantidad de preformados") +
+                    # labels = dollar, expand = c(0, 0),
+                    # limits = c(-2.2, 1.5),
+                    # breaks = seq(-2.2, 1.2, 0.4))  +
+ labs(title = "Distribución de unidades") + furia
+@
+
+
 
 \subsection{Gráfica}
 
