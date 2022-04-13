@@ -1,0 +1,418 @@
+---
+title: Time Series
+subtitle: Ejercicio Obligatorio
+author:
+- name: William Chavarría
+  affiliation: Máxima Formación
+  email: wchavarria@tigo.com.gt
+date: '`r format(Sys.Date())`'
+output: 
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+    highlight: pygments
+    theme: spacelab
+    css: custom.css
+    fig_caption: true
+    df_print: paged
+bibliography: [paquetes.bib, ts.bib]
+biblio-style: "apalike"
+link-citations: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo        = TRUE, 
+                      include     = TRUE,
+                      cache       = FALSE,
+                      fig.align   = 'center',
+                      message     = FALSE,
+                      warning     = FALSE, 
+                      comment     = NA, 
+                      highlight   = TRUE,
+                      strip.white = TRUE,
+                      dev         = "svglite",
+                      fig.width   = 11,
+                      fig.asp     = 0.5,
+                      fig.show    = "hold",
+                      fig.align   = "center")
+```
+
+# Volcan {.tabset .tabset-fade .tabset-pills}
+
+## Descripción
+
+Analiza la serie temporal sobre el índice de velo de polvo volcánico en el hemisferio
+norte, de 1500-1969 (datos originales de Hipel y Mcleod, 1994), una medida del impacto de la
+liberación de polvo y aerosoles de las erupciones volcánicas en el medio ambiente. El
+archivo se encuentra disponible en: http://robjhyndman.com/tsdldata/annual/dvi.dat.
+
+1. Importa/activa y grafica la serie;
+2. Si es necesario, busca una transformación log(), diff() o Box-Cox adecuada para los datos; 
+3. Analiza los correlograma y discute los modelos candidatos.
+4. Estima un modelo ARIMA utilizando la función automática auto.arima(); ¿coincide con tus modelos candidatos?
+5. De ser necesario, ajusta un modelo alternativo con la función Arima().
+6. ¿Qué tipo de modelo has obtenido? interpreta los resultados.
+7. Comprueba la validez del modelo realizando un diagnóstico de los residuos;
+8. Realiza predicciones con el modelo ajustado. ¿Las previsiones parecen razonables?
+
+## Paquetes
+
+```{r}
+options(warn = -1,
+		  scipen = 1,
+		  dplyr.summarise.inform = FALSE,
+		  tibble.print_min = 5,
+		  pillar.sigfig = 4,
+		  readr.show_col_types = FALSE)
+```
+
+
+```{r}
+import::from(magrittr, "%<>%", "%$%", .into = "operadores")
+import::from(kableExtra, .except = "group_rows")
+import::from(conectigo, cargar_fuentes)
+import::from(janitor, clean_names)
+import::from(tseries, adf.test)
+import::from(forecast, tsclean)
+import::from(cowplot, .except = "stamp")
+import::from(colorblindr, scale_color_OkabeIto)
+# import::from(changepoint, cpt.mean, cpt.var)
+import::from(tsutils, coxstuart)
+import::from(ggpmisc, stat_peaks, stat_valleys, stat_correlation)
+pacman::p_load(tsbox, latex2exp, fpp3, tidyverse)
+```
+
+## Funciones
+
+```{r}
+tabla <- function(df, cap = "prueba") {
+  
+  df %>% 
+   kbl(booktabs = TRUE, caption = cap, escape = F) %>% 
+   kable_paper(lightable_options = "hover", full_width = F)}
+```
+
+```{r}
+resaltar <- function(texto) {
+    
+    glue::glue("<span style='background-color: #FFFF00'>**{texto}**</span>")
+    
+}
+```
+
+```{r}
+rlt <- function(texto, color) {
+    
+	a <- "<span style='background-color: "
+	b <- "'>"
+	c <- "</span>"
+	t <- str_c("**", texto, "**")
+	f <- str_c(a, color, b)
+	glue::glue(f, t, c) 
+	
+}
+```
+
+```{r}
+colort <- function(vec, colorv, paleta, usarv = T) {
+	
+	# show_col(viridis_pal(option = "turbo")(30))
+	# paleta solo pueden ser A (magma), B (inferno), C (plasma),
+	# D (viridis) y E(cividis)
+	# rojo:     #F4354D
+	# amarillo: #FCA108
+	# verde:    #00AB40
+	if (usarv == T) {
+		
+		cell_spec(vec,
+				 color = "white",
+				 bold = TRUE,
+				 background = spec_color(x = colorv, 
+				 								option = paleta, 
+				 								direction = 1))
+	} else {
+		
+		cell_spec(vec,
+				 color = "white",
+				 bold = TRUE,
+				 background = colorv)
+	}
+	
+	
+}
+```
+
+```{r}
+unregister <- function() {
+  env <- foreach:::.foreachGlobals
+  rm(list = ls(name = env), pos = env)
+}
+```
+
+```{r}
+# agregar línea loess a las gráficas ggpairs
+loess_lm <- function(data, mapping, ...){
+ 
+ggplot(data = data, mapping = mapping) + 
+    geom_point(alpha = 0.9) + 
+    stat_smooth(formula = y ~ x, 
+                method = "lm", 
+                se = TRUE, 
+                color = "blue",
+                fill = "blue",
+                size = 0.5, 
+                alpha = 0.2,
+                linetype = "longdash", 
+                ...)
+}
+```
+
+## Opciones
+
+```{r}
+set.seed(2021)
+```
+
+```{r}
+colorx <- c(rojo = "#F4354D", amarillo = "#FCA108", verde = "#00AB40")
+```
+
+
+```{r}
+cargar_fuentes()
+```
+
+```{r}
+yunkel <- theme_cowplot(font_family = "yano") +
+	       theme(plot.margin = unit(c(3, 1, 1, 1), "mm"), 
+	             axis.title = element_text(size = 12))
+```
+
+```{r}
+# tema con grid horizontal y vertical
+drako <- theme_bw(base_family = "yano", base_size = 14) +
+	      theme(plot.margin = unit(c(6, 1, 1, 1), "mm"),
+	            axis.title = element_text(size = 12),
+	            plot.subtitle = element_text(size = 8,
+                                            family = "sans"))
+```
+
+```{r}
+theme_set(drako)
+```
+
+
+# Importar
+
+```{r, cache=TRUE}
+volcan_raw <- scan("http://robjhyndman.com/tsdldata/annual/dvi.dat", skip = 1)
+```
+
+# Preparar (Tidy)
+
+```{r}
+volcan <- ts(volcan_raw, start = c(1500)) |> 
+ ts_c() |> 
+ ts_tbl() |> 
+ mutate(year = 1500:1969) |> 
+ rename(fecha = time) |> 
+ relocate(year, .before = 1) |> 
+ as_tsibble(index = year)
+```
+
+```{r}
+coxstuart(volcan$value) |> 
+ bind_rows(.id = "loco") |> clean_names()
+```
+
+# Graficar
+
+```{r}
+volcan |> 
+ ggplot(aes(x = fecha, y = value)) +
+ geom_line() +
+ stat_peaks(geom = "point", span = 61, color = "red", size = 2) +
+ stat_peaks(geom = "text",
+				  span  = 61,
+				  color = "red",
+				  vjust = 0,
+				  hjust = -0.2,
+				  x.label.fmt = "%Y",
+				  size = 4)
+```
+
+<p class="comment">
+Vemos que la variabilidad se modifica con el tiempo, por lo que esta serie es **no
+estacionaria en la varianza**.  Los picos no se repiten a lo largo de los años de forma
+constante, así que deberemos evaluar la estacionalidad de manera más formal o con técnicas de
+descomposición. También vemos que la distribución de la variable varía en cada instante con
+el tiempo, por lo que podemos decir que la serie es **no estacionaria en la distribución**.
+No se observa una tendencia aparente.
+</p>
+
+## Componentes
+
+```{r}
+volcan |> model(stl = STL(value)) |> components() |> autoplot()
+```
+
+<p class="comment">
+La descomposición no detectó un componente estacional.
+</p>
+
+```{r}
+volcan %$%
+ coxstuart(value) |> 
+ bind_rows() |>
+ clean_names() |> 
+ tabla(cap = "Prueba de tendencia")
+```
+
+<p class="comment">
+Obtenemos que la tendencia es significativa
+</p>
+
+
+## Estacionariedad
+
+### Prueba informal
+
+Grafiquemos el correlograma de la serie **sin transformar** solo para efectos de poder
+evaluar si la serie es estacionaria.
+
+```{r}
+volcan |> ACF(value) |> autoplot()
+# gg_tsdisplay(volcan, y = value, plot_type = "partial")
+```
+
+<p class="comment">
+Pendiente respuesta de rosana
+</p>
+
+### Pruebas formales
+
+```{r}
+est <- list(
+  ljung = ~ ljung_box(diff(.x)),
+  kpss  = ~ unitroot_kpss(.x), 
+  pp    = ~ unitroot_pp(.x),
+  adf   = ~ adf.test(.x, alternative = "stationary") |>
+  	                  tidy() |>
+  	                  select(statistic, p.value) |>
+  	                  as.numeric()
+)
+```
+
+```{r}
+volcan |> 
+ as_tibble() |> 
+ summarise(across(value, est)) |> 
+ slice(2) |> 
+ rename_with(~ str_remove_all(.x, "value_")) |> 
+ pivot_longer(cols = everything(), 
+              names_to = "test",
+              values_to = "p_valor") |> 
+ mutate(null_hypothesis = c("stationarity", "stationarity", "non-stationarity",
+                            "non-stationarity"),
+ 		  resultado = case_when(
+ 		  	p_valor < 0.05 & null_hypothesis == "stationarity" ~ "no_estacionaria",
+ 		  	p_valor < 0.05 & null_hypothesis == "non-stationarity" ~ "estacionaria",
+ 		  	TRUE ~ "estacionaria"
+ 		  )) |> 
+ tabla(cap = "Pruebas formales de estacionariedad")
+ 
+```
+
+# Transformación
+
+## Logaritmo
+
+<p class="comment">
+Aplicar una transformación logarítmica no es posible debido a que hay ceros. 
+</p>
+
+## Diferenciar
+
+```{r}
+volcan |> 
+ features(value, features = list(unitroot_ndiffs,
+                                 unitroot_nsdiffs)) |> 
+ tabla("¿Hay necesidad de diferenciar?")
+```
+
+<p class="comment">
+Como vemos no hay necesidad de aplicar diferenciación debido a que la serie es estacionaria.
+</p>
+
+```{r}
+volcan |> 
+ mutate(primera_diferencia = difference(value),
+        segunda_diferencia = difference(primera_diferencia)) |> 
+ pivot_longer(cols = ends_with("cia"), names_to = "diff", values_to = "valores") |> 
+ ggplot(aes(x = fecha, y = valores)) +
+ geom_line(aes(color = diff)) +
+ scale_color_OkabeIto() +
+ facet_grid(diff ~ .) +
+ theme(legend.position = "bottom", legend.title = element_blank())
+	
+```
+
+<p class="comment">
+Vemos una ausencia de cualquier aumento o disminución sostenidos en el nivel de la serie
+posterior a la diferenciación; ahora vemos que fluctúa alrededor de un nivel medio constante
+Un nivel medio constante es una condición, pero no la única, para que una serie sea
+estacionaria. [@mills_applied_2019 pag 4]
+</p>
+
+
+## Box-Cox
+
+```{r}
+lam <- volcan |> 
+ features(value, features = guerrero)
+```
+
+```{r}
+volcan %<>% mutate(velo = box_cox(value, lam))
+```
+
+```{r}
+volcan |> 
+autoplot(velo) +
+ labs(y = "", title = TeX(paste0(
+  "Transformación del índice de velo volcánico con   $\\lambda$ = ",
+  round(lam, 2)))) +
+ theme_bw()
+```
+
+<p class="comment">
+La varianza se ve más estable, aunque con valores negativos.
+</p>
+
+
+
+
+
+
+# Bibliografía
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

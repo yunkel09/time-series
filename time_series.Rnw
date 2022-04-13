@@ -524,6 +524,11 @@ print_tablas <- function(lista_tablas) {
 
 @
 
+<<child='secciones/02_fibra.Rnw'>>=
+
+@
+
+
 <<child='secciones/09_bibliografia.Rnw'>>=
 
 @
