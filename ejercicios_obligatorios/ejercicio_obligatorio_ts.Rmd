@@ -15,6 +15,7 @@ output:
     css: custom.css
     fig_caption: true
     df_print: paged
+    # includes: header.html
 bibliography: [paquetes.bib, ts.bib]
 biblio-style: "apalike"
 link-citations: true
@@ -71,47 +72,68 @@ options(warn = -1,
 
 ```{r}
 import::from(magrittr, "%<>%", "%$%", .into = "operadores")
+import::from(zeallot, `%<-%`)
 import::from(kableExtra, .except = "group_rows")
 import::from(conectigo, cargar_fuentes)
 import::from(janitor, clean_names)
 import::from(tseries, adf.test)
 import::from(forecast, tsclean)
 import::from(cowplot, .except = "stamp")
+import::from(glue, glue)
 import::from(colorblindr, scale_color_OkabeIto)
-# import::from(changepoint, cpt.mean, cpt.var)
 import::from(tsutils, coxstuart)
 import::from(ggpmisc, stat_peaks, stat_valleys, stat_correlation)
-pacman::p_load(tsbox, latex2exp, fpp3, tidyverse)
+pacman::p_load(scales, tsbox, latex2exp, fpp3, tidyverse)
 ```
 
 ## Funciones
 
 ```{r}
+# calcular retardos significativos
+retardos <- function(df, fun) {
+ ul <- 1.96 / sqrt(nrow(df) - 1)
+ no <- tolower(deparse(substitute(fun)))
+ df |> fun(value) |> 
+  filter(!between(x = .data[[no]], left = (ul * -1), right = ul)) |> 
+  mutate(across(where(is.numeric), round, 3))
+}
+```
+
+```{r}
+# pruebas formales de estacionariedad
+est <- list(
+  ljung = ~ ljung_box(diff(.x)),
+  kpss  = ~ unitroot_kpss(.x), 
+  pp    = ~ unitroot_pp(.x),
+  adf   = ~ adf.test(.x, alternative = "stationary") |>
+                     tidy() |>
+                     select(statistic, p.value) |>
+                     as.numeric()
+)
+```
+
+
+```{r}
 tabla <- function(df, cap = "prueba") {
-  
   df %>% 
-   kbl(booktabs = TRUE, caption = cap, escape = F) %>% 
+   kbl(booktabs = TRUE, linesep = "", caption = cap, escape = F) %>% 
    kable_paper(lightable_options = "hover", full_width = F)}
 ```
 
 ```{r}
 resaltar <- function(texto) {
-    
-    glue::glue("<span style='background-color: #FFFF00'>**{texto}**</span>")
-    
+ glue::glue("<span style='background-color: #FFFF00'>**{texto}**</span>")
 }
 ```
 
 ```{r}
 rlt <- function(texto, color) {
-    
-	a <- "<span style='background-color: "
-	b <- "'>"
-	c <- "</span>"
-	t <- str_c("**", texto, "**")
-	f <- str_c(a, color, b)
-	glue::glue(f, t, c) 
-	
+ a <- "<span style='background-color: "
+ b <- "'>"
+ c <- "</span>"
+ t <- str_c("**", texto, "**")
+ f <- str_c(a, color, b)
+ glue::glue(f, t, c) 
 }
 ```
 
@@ -144,41 +166,38 @@ colort <- function(vec, colorv, paleta, usarv = T) {
 }
 ```
 
+
 ```{r}
-unregister <- function() {
-  env <- foreach:::.foreachGlobals
-  rm(list = ls(name = env), pos = env)
+# es mejor usar notación científica para los p-valores
+cient <- label_scientific()
+
+# resultados del modelo con ARIMA
+fun_list <- list(
+ coeficientes  = function(df) df |> 
+  tidy() |> 
+	mutate(
+		across(estimate:statistic, round, 4),
+		across(p.value, cient)),
+ bondad = function(df) df |> 
+  glance() |>
+ 	arrange(AIC) |> # el menor AIC es el más parsimonioso
+ 	select(.model:BIC)
+)
+
+# extraer la información de los modelos para comparar
+ajustar_modelos <- function(mdl, fun_list = fun_list) {
+ fun_list |> 
+  map(exec, df = mdl)
 }
 ```
 
-```{r}
-# agregar línea loess a las gráficas ggpairs
-loess_lm <- function(data, mapping, ...){
- 
-ggplot(data = data, mapping = mapping) + 
-    geom_point(alpha = 0.9) + 
-    stat_smooth(formula = y ~ x, 
-                method = "lm", 
-                se = TRUE, 
-                color = "blue",
-                fill = "blue",
-                size = 0.5, 
-                alpha = 0.2,
-                linetype = "longdash", 
-                ...)
-}
-```
+
 
 ## Opciones
 
 ```{r}
-set.seed(2021)
-```
-
-```{r}
 colorx <- c(rojo = "#F4354D", amarillo = "#FCA108", verde = "#00AB40")
 ```
-
 
 ```{r}
 cargar_fuentes()
@@ -203,14 +222,17 @@ drako <- theme_bw(base_family = "yano", base_size = 14) +
 theme_set(drako)
 ```
 
-
-# Importar
+# Load
 
 ```{r, cache=TRUE}
 volcan_raw <- scan("http://robjhyndman.com/tsdldata/annual/dvi.dat", skip = 1)
 ```
 
-# Preparar (Tidy)
+```{r}
+head(volcan_raw)
+```
+
+# Prep
 
 ```{r}
 volcan <- ts(volcan_raw, start = c(1500)) |> 
@@ -223,33 +245,36 @@ volcan <- ts(volcan_raw, start = c(1500)) |>
 ```
 
 ```{r}
-coxstuart(volcan$value) |> 
- bind_rows(.id = "loco") |> clean_names()
+volcan |> slice_head(n = 5) |> tabla(cap = "Objeto tsibble")
 ```
 
-# Graficar
+# EDA
 
-```{r}
+(ref:gr-01) Gráfica de la serie
+
+```{r, gr-01, fig.cap='(ref:gr-01)'}
 volcan |> 
  ggplot(aes(x = fecha, y = value)) +
  geom_line() +
  stat_peaks(geom = "point", span = 61, color = "red", size = 2) +
  stat_peaks(geom = "text",
-				  span  = 61,
-				  color = "red",
-				  vjust = 0,
-				  hjust = -0.2,
-				  x.label.fmt = "%Y",
-				  size = 4)
+            span  = 61,
+            color = "red",
+            vjust = 0,
+            hjust = -0.2,
+            x.label.fmt = "%Y",
+            size = 4)
 ```
 
+<br/>
+
 <p class="comment">
-Vemos que la variabilidad se modifica con el tiempo, por lo que esta serie es **no
-estacionaria en la varianza**.  Los picos no se repiten a lo largo de los años de forma
-constante, así que deberemos evaluar la estacionalidad de manera más formal o con técnicas de
-descomposición. También vemos que la distribución de la variable varía en cada instante con
-el tiempo, por lo que podemos decir que la serie es **no estacionaria en la distribución**.
-No se observa una tendencia aparente.
+En el gráfico \@ref(fig:gr-01) se observa que La variabilidad no es del todo constante, sin
+embargo, no se observa un patrón claro de variación (aumenta o disminuye la varianza en el
+tiempo, o hay períodos con gran varianza, etc.). Por eso se puede decir que es bastante
+estacionaria. La serie de tiempo parece ser estacionaria en media y varianza, ya que su nivel
+y varianza parecen ser aproximadamente constantes en el tiempo. Por lo tanto, no parece que
+necesitemos diferenciar.
 </p>
 
 ## Componentes
@@ -258,9 +283,19 @@ No se observa una tendencia aparente.
 volcan |> model(stl = STL(value)) |> components() |> autoplot()
 ```
 
+Las barras grises a la izquierda de cada panel muestran las escalas relativas de los
+componentes. Cada barra gris representa la misma longitud pero debido a que las gráficas
+están en diferentes escalas, las barras varían en tamaño. La barra gris grande en el panel
+del medio muestra que la variación en el componente restante es menor en comparación con la
+variación en los datos.
+
 <p class="comment">
 La descomposición no detectó un componente estacional.
 </p>
+
+## Tendencia
+
+Veamos si la tendencia observada es significativa
 
 ```{r}
 volcan %$%
@@ -270,42 +305,61 @@ volcan %$%
  tabla(cap = "Prueba de tendencia")
 ```
 
+</br>
+
 <p class="comment">
 Obtenemos que la tendencia es significativa
 </p>
 
-
 ## Estacionariedad
+
+Veamos los retardos significativos en un correlograma. Para esto, utilizaremos la función
+`retardos()` definida en la sección de funciones para que nos ayude a visualizar esto de
+mejor forma:
 
 ### Prueba informal
 
 Grafiquemos el correlograma de la serie **sin transformar** solo para efectos de poder
 evaluar si la serie es estacionaria.
 
-```{r}
-volcan |> ACF(value) |> autoplot()
-# gg_tsdisplay(volcan, y = value, plot_type = "partial")
+(ref:gr-02) ACF Volcan sin transformar
+
+```{r, gr-02, fig.cap='(ref:gr-02)'}
+volcan |> gg_tsdisplay(value, plot_type = "partial")
 ```
 
+<br/>
+
+```{r, retar}
+retardos(volcan, ACF) |> 
+ left_join(retardos(volcan, PACF), by = "lag") |> 
+ tabla(cap = "Retardos significativos en ACF y PACF")
+```
+
+<br/>
+
 <p class="comment">
-Pendiente respuesta de rosana
+Tanto en el gráfico \@ref(fig:gr-02) como en la tabla \@ref(tab:retar) se observa que las
+autocorrelaciones para los retardos 1, 2 y 3 en el ACF exceden los límites de significancia,
+y que las autocorrelaciones descienden a cero después del retardo 3. Las autocorrelaciones
+para los retardos 1, 2, 3 son positivas y disminuyen en magnitud al aumentar retardo (retardo
+1: 0,666, retardo 2: 0,374, retardo 3: 0,162. La autocorrelación para los retardos 19 y 20
+también excede los límites de significancia, pero es probable que esto se deba al azar
+(esperaríamos que 1 de cada 20 retardos exceda los límites de significación del 95% solo
+por azar), ya que las autocorrelaciones para los retardos 4-18 no exceden los límites.
+</p>
+
+
+<p class="comment">
+En el autocorrelograma parcial, vemos que la autocorrelación parcial en el retardo 1 es
+positiva y excede los límites de significancia (0.666), mientras que la autocorrelación
+parcial en el retardo 2 es negativa y también excede los límites de significancia (-0.126).
+ Las autocorrelaciones parciales se reducen a cero después del retardo 2
 </p>
 
 ### Pruebas formales
 
-```{r}
-est <- list(
-  ljung = ~ ljung_box(diff(.x)),
-  kpss  = ~ unitroot_kpss(.x), 
-  pp    = ~ unitroot_pp(.x),
-  adf   = ~ adf.test(.x, alternative = "stationary") |>
-  	                  tidy() |>
-  	                  select(statistic, p.value) |>
-  	                  as.numeric()
-)
-```
-
-```{r}
+```{r, formal-test}
 volcan |> 
  as_tibble() |> 
  summarise(across(value, est)) |> 
@@ -325,7 +379,14 @@ volcan |>
  
 ```
 
+</br>
+
 # Transformación
+
+Tanto en la gráfica \@ref(fig:gr-01) como en las pruebas formales de la tabla
+\@ref(tab:formal-test) vemos que una transformación **no es necesaria**, sin embargo para efectos
+didacticos, analicemos las posibles transformaciones.
+
 
 ## Logaritmo
 
@@ -343,7 +404,8 @@ volcan |>
 ```
 
 <p class="comment">
-Como vemos no hay necesidad de aplicar diferenciación debido a que la serie es estacionaria.
+Como vemos no hay necesidad de aplicar diferenciación debido a que la serie
+**es estacionaria.**
 </p>
 
 ```{r}
@@ -365,7 +427,6 @@ posterior a la diferenciación; ahora vemos que fluctúa alrededor de un nivel m
 Un nivel medio constante es una condición, pero no la única, para que una serie sea
 estacionaria. [@mills_applied_2019 pag 4]
 </p>
-
 
 ## Box-Cox
 
@@ -391,10 +452,289 @@ autoplot(velo) +
 La varianza se ve más estable, aunque con valores negativos.
 </p>
 
+# Modelado
+
+## Selección manual
 
 
+(ref:gr-03) Correlograma de la serie sin diferenciar
+
+```{r, gr-03, fig.cap='(ref:gr-03)'}
+gg_tsdisplay(volcan, value, plot_type = "partial")
+```
+
+<br/>
+
+<p class="comment">
+En el gráfico \@ref(fig:gr-03) se observa que el ACF decae y el PACF se corta en 2. Un modelo
+candidato sería el **AR(2) o ARIMA(2, 0, 0)**
+</p>
+
+## Split
+
+```{r}
+sw <- (nrow(volcan) * 0.8) %>% ceiling()
+train <- volcan %>% slice(1:sw)
+test  <- volcan %>% slice(sw + 1:n())
+corte <- max(train$year)
+ultim <- max(test$year)
+```
 
 
+```{r}
+autoplot(train, value, size = 0.8) +
+ autolayer(test, value, color = "red", size = 0.8) +
+ annotate("rect",
+ 			 xmin = train$year[1],
+ 			 xmax = corte,
+ 			 ymin = -Inf,
+ 			 ymax = Inf,
+ 			 fill = "red",
+ 			 alpha = .1) +
+ annotate("rect",
+ 			 xmin = corte,
+ 			 xmax = ultim,
+ 			 ymin = -Inf,
+ 			 ymax = Inf,
+ 			 fill = "blue",
+ 			 alpha = .1) +
+ annotate(geom = "text",
+          x = corte - 175,
+ 			 y = 600, size = 10,
+          label = "80%") +
+ annotate(geom = "text",
+          x = corte + 47,
+ 			 y = 600, size = 10,
+          label = "20%") +
+ labs(title = "Training and test sets")
+```
+
+## Auto ARIMA
+
+Realizaremos el ajuste considerando el modelo observado AR(2) y agregaremos de forma manual
+dos candidatos adicionales.  También dejaremos que la función \ti{auto.arima} busque
+primeramente con valores por defectos y luego la haremos buscar con los parámetros
+\ti{stepwise = FALSE} y \ti{greedy = FALSE} para que realice una búsqueda profunda.
+
+```{r}
+fit <- train |> 
+ model(ar1  = ARIMA(value ~ pdq(1, 0, 0)),
+ 		 ar2  = ARIMA(value ~ pdq(2, 0, 0)),
+       ma3  = ARIMA(value ~ pdq(0, 0, 3)),
+       stepwise = ARIMA(value),
+       busqueda = ARIMA(value, stepwise = FALSE, greedy = FALSE),
+       preciso = ARIMA(value, stepwise = FALSE, approximation = FALSE, greedy = FALSE))
+```
+
+```{r, paged.print = FALSE}
+fit |>
+ pivot_longer(everything(),
+ 				  names_to  = "modelo",
+ 				  values_to = "orden")
+```
+
+
+```{r}
+c(t1, t2) %<-% ajustar_modelos(fit, fun_list)
+```
+
+```{r}
+t2 |> tabla(cap = "Bondad de ajuste")
+```
+
+</br>
+
+## Mejor AIC
+
+Seleccionemos el mejor modelo que nos da la mejor bondad de ajuste en el conjunto de
+entrenamiento
+
+```{r}
+best_gof_model <- t2 |> 
+ slice_min(order_by = AICc) |> 
+ pull(.model)
+```
+
+Aquel modelo con menor AICc será el más parsimonioso y por tanto el que se recomendará
+seleccionar. 
+
+# Interpretación
+
+<p class="comment">
+El modelo con menor AICc es el que determinamos a partir de las gráficas ACF y PACF y que
+llamamos `r best_gof_model`. 
+</p>
+
+# Diagnóstico
+
+(ref:gr-04) Resumen gráfico
+
+```{r, gr-04, fig.cap='(ref:gr-04)'}
+fit |> 
+ select(any_of(best_gof_model)) |> 
+ gg_tsresiduals() +
+ labs(title = "Análisis de residuos")
+```
+
+<br/>
+
+<p class="comment">
+En el gráfico \@ref(fig:gr-04) se observa que los residuos no muestran un patrón evidente. 
+Uno de los bastones se sale de los límites, pero es probable que esto se deba al azar
+(esperaríamos que 1 de cada 20 retardos exceda los límites de significación del 95% solo 
+or azar). La distribución de los residuos se ve bastante normal.
+</p>
+
+```{r}
+augment(fit) |> 
+ filter(.model == "ar2") |> 
+ features(.innov, ljung_box, lag = 10, dof = 3) |> 
+ tabla(cap = "Los residuos son ruido blanco")
+```
+
+<p class="comment">
+Una prueba de *portmanteau* arroja un p-valor grande, lo que también sugiere que **los
+residuos son ruido blanco**.
+</p>
+
+# Comparar
+
+```{r}
+fit_fc <- fit |>
+ forecast(h = 94)
+```
+
+```{r}
+fit_fc
+```
+
+```{r}
+fit_fc |> 
+ autoplot(volcan)
+```
+
+(ref:gr-05) Resumen gráfico
+
+```{r, gr-05, fig.cap='(ref:gr-05)'}
+fit_fc |> 
+ filter(.model == best_gof_model) |> 
+ autoplot(volcan)
+```
+
+<br/>
+
+<p class="comment">
+En el gráfico \@ref(fig:gr-05) vemos la linea azul la cual representa la predicción media de
+nuestro modelo. Aquí estamos utilizando el modelo que nos entregó una mejor bondad de ajuste
+con los datos de entrenamiento y **no necesariamente es el mejor modelo para predecir.**
+</p>
+
+Ahora vamos a comparar los diferentes modelos **con base a su precisión en lugar de utilizar
+la bondad de ajuste.**
+
+```{r}
+evaluacion <- accuracy(fit_fc, volcan) |> 
+ select(where(~ !any(is.infinite(.x))), -.type) |> 
+ arrange(MAE)
+```
+
+
+```{r, preci}
+evaluacion |> 
+ tabla(cap = "Selección del mejor modelo con base a su precisión")
+```
+
+En la tabla \@ref(tab:preci) vemos los resultados de precisión de los diferentes modelos. La
+función `accuracy()` extraerá automáticamente los períodos relevantes de los datos (volcan en
+este ejemplo) para coincidir con los pronósticos al calcular las diversas medidas de
+precisión.^[`r resaltar("No es necesario especificar el set de pruebas, la función accuracy
+la determina automáticamente")` [otexts](https://bit.ly/3uKjRZy)]
+
+Hemos eliminado aquellas mediciones que dan infinito ya que esto se debe
+probablemente a que $\hat{y}_{t}$ este muy cercano a cero, el cual es el caso.
+
+```{r}
+best_rmse_model <-  evaluacion |> 
+ slice_min(order_by = RMSE) |> 
+ pull(.model)
+```
+
+# Predecir
+
+(ref:gr-06) Resumen gráfico
+
+```{r, gr-06, fig.cap='(ref:gr-06)'}
+fit_fc |> 
+ filter(.model == best_rmse_model) |> 
+ autoplot(volcan)
+```
+
+<br/>
+
+<p class="comment">
+En el gráfico \@ref(fig:gr-06) se observa la linea azul la cual representa la predicción
+media de nuestro modelo. Aquí estamos utilizando el modelo que nos entregó una mejor RMSE
+con los datos de prueba y solo con cross-validación podremos saber como se incrementa el
+error de este modelo a medida que se extiende el horizonte de pronóstico.
+</p>
+
+# Cross-validation
+
+```{r}
+volcan_tr <- volcan |> 
+ stretch_tsibble(.init = 3, .step = 1)
+```
+
+Volvemos a ajustar el mejor modelo, pero esta vez con los datos de entrenamiento
+ensanchados por la técnica de validación cruzada.
+
+```{r, cache=TRUE}
+# tic()
+fc <- volcan_tr |>
+ model(ma3 = ARIMA(value ~ pdq(0, 0, 3))) |>
+ forecast(h = 5) |> 
+ group_by(.id) |> 
+ mutate(h = row_number()) |> 
+ ungroup() |> 
+ as_fable(response = "value", distribution = value)
+# toc()
+```
+
+```{r}
+fc_tb <- fc |> 
+ accuracy(volcan, by = c("h", ".model")) |> 
+ mutate(MSE = RMSE^2) |> 
+ select(h, .model, RMSE, MSE)
+```
+
+```{r}
+fc_tb |> 
+ ggplot(aes(x = h, y = RMSE)) +
+ geom_point() +
+ labs(title = "Desempeño del modelo de 1 a 5 años",
+ 	  subtitle = "El gráfico muestra que el error de pronóstico aumenta a medida que aumenta el horizonte de pronóstico, como cabría esperar.")
+```
+
+# Coeficientes
+
+```{r, coef}
+t1 |> tabla(cap = "Coeficientes")
+```
+
+<p class="comment">
+En la tabla \@ref(tab:coef) vemos los coeficientes del modelo MA(3).  Sabemos que si
+$c \neq 0$ y $d = 0$ los pronósticos a largo plazo irán a la media de los datos. Este
+comportamiento se ve en la figura \@ref(fig:gr-06) en la que los intervalos de predicción
+tienen casi el mismo ancho para los últimos horizontes de pronósticos y los pronósticos de
+puntos finales están cerca de la media de los datos.
+</p>
+
+## Constante
+
+La función `fable::ARIMA()` utiliza una parametrización alternativa de constantes a la de
+`stats::arima()` y `forecast::Arima()`. Si bien las parametrizaciones son equivalentes,
+`r resaltar("los coeficientes para la constante/media serán diferentes.")`.
+Ver https://bit.ly/36gbLP3
 
 # Bibliografía
 

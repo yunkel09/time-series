@@ -259,7 +259,7 @@ Los datos muestran una tendencia y por tanto no son estacionarios.
   
  \end{itemize}
 
-\subsection{Función de autocorrelación ACF y autocorrelación parcial PACF}
+\subsection{Función ACF y PACF}
 
 \im{¿Cómo se calculan los valores de la función de autocorrelación ACF?}
 
@@ -1343,6 +1343,114 @@ consecuencia.
 <<>>=
 autoplot(forecast(fit_2, h = 30))
 @
+
+\subsection{Selección de un modelo ARIMA}
+
+Graficar ACF/PACF sobre los datos originales o diferenciados (en el caso de que sea
+necesario), permite determinar posibles modelos candidatos. Luego podemos buscar modelos
+mediante algoritmos y elegir el mejor por ejemplo mediante AICc. Y por último debemos evaluar
+el ACF de los residuos del model para comprobar que se comportan como ruido blanco (en ese
+caso no quedarían patrones relevantes por explicar). Un resumen del procedimiento puedes
+verlo en la figura \ref{fig:flujo}:
+
+\begin{figure}[H]
+\includegraphics[width = \linewidth]{ide2}
+\caption{Resumen}
+   \label{fig:resm}
+\end{figure}
+
+
+\begin{figure}[H]
+\includegraphics[width = \linewidth]{flujo_es.pdf}
+\caption{Procedimiento para el modelado}
+   \label{fig:flujo}
+\end{figure}
+
+\subsection{Determinar orden del modelo}
+
+Sobre cómo identificar el orden p y q de modelos ARIMA con los correlogramas. Los modelos
+ARIMA más sencillos (bajo p y q) son más fáciles de diagnosticar con correlogramas, pero a
+medida que se hacen más complejos (altos p y q) se vuelve más difícil identificar mediante
+correlograma.
+
+ \begin{itemize}[itemsep=1ex]
+	\item Para un modelo AR(p) el ACF decae y el PACF se corta para el retardo (lag) p; p es
+	el orden del modelo.
+	
+		\begin{figure}[H]
+      	\includegraphics[width = \linewidth]{ARp}
+      	\caption{Proceso AR}
+   		\label{fig:arp}
+		\end{figure}
+	
+	
+	\item Para un modelo MA(q) el ACF se corta para el retardo (lag) q y el PACF decae; q es
+	el orden del modelo.
+	
+		\begin{figure}[H]
+      	\includegraphics[width = \linewidth]{MAq}
+      	\caption{Proceso MA}
+   		\label{fig:maq}
+		\end{figure}
+	
+   \item Recuerda que para un modelo ARMA(p, q) encontramos que tanto el ACF como el PACF
+  decaen (se cortan para lags bajos)
+  
+		\begin{figure}[H]
+      	\includegraphics[width = \linewidth]{ARMApq}
+      	\caption{Proceso ARMA}
+   		\label{fig:arma}
+		\end{figure}
+  
+  
+ \end{itemize}
+ 
+\im{Ejemplos}
+
+\textbf{\hl{Recuerda que la serie a analizar mediante correlogramas debe ser estacionaria, si no
+fuera así necesitarás diferenciar}}
+
+\begin{figure}[H]
+\includegraphics[width = \linewidth]{ma2}
+\caption{Modelo MA(2) o ARIMA(0, 0, 2)}
+   \label{fig:ma2}
+\end{figure}
+
+En la figura \ref{fig:ma2} se observa que el ACF se corta en 2 y el PACF decae. Un modelo
+candidato sería el MA(2) o ARIMA(0, 0, 2)
+
+\begin{figure}[H]
+\includegraphics[width = \linewidth]{ejar1}
+\caption{Modelo AR(1) o ARIMA(1, 0, 0)}
+   \label{fig:ejar1}
+\end{figure}
+
+En la figura \ref{fig:ejar1} se observa que el ACF decae y el PACF se corta en 1. Un modelo
+candidato sería el AR(1) o ARIMA(1, 0, 0)
+
+\begin{figure}[H]
+\includegraphics[width = \linewidth]{manchas}
+\caption{Posible modelo AR(3)}
+   \label{fig:manchas}
+\end{figure}
+
+En la figura \ref{fig:manchas} vemos que para el número de manchas solares (suspot) vemos que
+parece tener un comportamiento autorregresivo (AR), el ACF decae mientras que el PACF se
+corta en 3. Posible modelo AR(3) (o probar modelos más sencillos como AR(2) o AR(1), ya que a
+veces se arrastran lags significativos cuando el efecto de lags más bajos es muy fuerte).
+
+\begin{figure}[H]
+\includegraphics[width = \linewidth]{complejos}
+\caption{Combinaciones}
+   \label{fig:comb}
+\end{figure}
+
+En la figura \ref{fig:comb} puedes ver ejemplos más complejos donde se combinan modelos AR y
+MA en un ARMA. \textbf{Como tanto el ACF como el PACF decaen, podemos sospechar en un modelo
+ARMA}, pero será muy difícil derivar valores adecuados para p y q basado en la inspección
+visual. Por lo tanto, es útil aplicar un enfoque más cuantitativo para determinar estos
+parámetros usando la función  \ti{ARIMA()} del paquete $\left \{fable \right \}$
+
 
 \section{SARIMA}
 
