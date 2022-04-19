@@ -467,7 +467,9 @@ gg_tsdisplay(volcan, value, plot_type = "partial")
 
 <p class="comment">
 En el gráfico \@ref(fig:gr-03) se observa que el ACF decae y el PACF se corta en 2. Un modelo
-candidato sería el **AR(2) o ARIMA(2, 0, 0)**
+candidato sería el **AR(2) o ARIMA(2, 0, 0)**. También podríamos decir que el PACF decae con
+un corte en el retardo p = 3 en el ACF, por lo que otro modelo candidato sería un MA(3), es
+decir ARIMA(0, 0, 3)
 </p>
 
 ## Split
