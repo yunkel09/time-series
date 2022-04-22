@@ -77,13 +77,13 @@ import::from(kableExtra, .except = "group_rows")
 import::from(conectigo, cargar_fuentes)
 import::from(janitor, clean_names)
 import::from(tseries, adf.test)
-import::from(forecast, tsCV)
+import::from(forecast, .except = c("accuracy", "forecast"))
 import::from(cowplot, .except = "stamp")
 import::from(glue, glue)
 import::from(colorblindr, scale_color_OkabeIto)
 import::from(tsutils, coxstuart)
 import::from(ggpmisc, stat_peaks, stat_valleys, stat_correlation)
-pacman::p_load(scales, tsbox, latex2exp, fpp3, tidyverse)
+pacman::p_load(tictoc, scales, tsbox, latex2exp, fpp3, tidyverse)
 ```
 
 ## Funciones
@@ -494,8 +494,8 @@ profunda.
 
 ```{r}
 fit <- volcan |> 
- model(ar2  = ARIMA(value ~ pdq(2, 0, 0)),
-       ma3  = ARIMA(value ~ pdq(0, 0, 3)),
+ model(ar2  = ARIMA(value ~ 1 + pdq(2, 0, 0)),
+       ma3  = ARIMA(value ~ 1 + pdq(0, 0, 3)),
        stepwise = ARIMA(value),
        busqueda = ARIMA(value, stepwise = FALSE, greedy = FALSE),
        preciso  = ARIMA(value, stepwise = FALSE, approximation = FALSE, greedy = FALSE))
@@ -534,9 +534,9 @@ best_gof_model <- t2 |>
 best_gof_model
 ```
 
+Tenemos un vector con dos modelos debido a que tanto mi modelo candidato seleccionado
+manualmente como la el obtenido con auto.arima en modo exhaustivo son **coincidentes**.
 
-Aquel modelo con menor AICc será el más parsimonioso y por tanto el que se recomendará
-seleccionar. 
 
 # Interpretación
 
@@ -586,6 +586,8 @@ augment(fit) |>
  tabla(cap = "Los residuos son ruido blanco")
 ```
 
+</br>
+
 <p class="comment">
 Una prueba de *portmanteau* arroja un p-valor grande, lo que también sugiere que **los
 residuos son ruido blanco**.
@@ -593,171 +595,143 @@ residuos son ruido blanco**.
 
 # Validación Cruzada
 
-Una buena manera de elegir el mejor modelo de pronóstico es encontrar el modelo con el RMSE
-más pequeño calculado mediante la validación cruzada de series temporales.
+Probaremos dos métodos y evaluaremos que tan parecido es su RMSE para un horizonte de 5
+años
+
+## Método forecast::tsCV()
+
+```{r}
+far2 <- function(x, h){forecast(Arima(x, order = c(2,0,0)), h = h)}
+e <- tsCV(ts(volcan_raw, start = c(1500)), far2, h = 1)
+sqrt(mean(e^2, na.rm=TRUE)) 
+```
+
+```{r}
+far2 <- function(x, h){forecast(Arima(x, order=c(0,0,3)), h=h)}
+e <- tsCV(ts(volcan_raw, start = c(1500)), far2, h = 1)
+sqrt(mean(e^2, na.rm=TRUE)) 
+```
+
+## Método tsibble::stretch_tsibble()
+
+A continuación, comparamos la precisión obtenida a través de la validación cruzada de series
+temporales con la precisión residual. La función `stretch_tsibble()` la usaremos para crear
+muchos conjuntos de entrenamiento. En este caso, comenzaremos con un conjunto de
+entrenamiento de longitud `.init = 3`  y aumentamos el tamaño de los conjuntos de
+entrenamiento sucesivos en `.step = 1.`
 
 ```{r}
 volcan_tr <- volcan |> 
  stretch_tsibble(.init = 3, .step = 1)
 ```
 
-Volvemos a ajustar el mejor modelo, pero esta vez con los datos de entrenamiento
-ensanchados por la técnica de validación cruzada.
+Con base a los resultados de la función auto.arima, comparemos dos modelos candidatos, los
+cuales obtuvieron las mejores puntuaciones de AICc en cuanto a residuos en la parte de
+capacitación.  Ahora veamos como se ven los resultados de estos modelos, pero ahora utilizando
+CV y RMSE como métrica de desempeño final.
 
-```{r, cache=TRUE}
-# tic()
-fc <- volcan_tr |>
- model(ar2 = ARIMA(value ~ pdq(2, 0, 0))) |>
- forecast(h = 5) |> 
- group_by(.id) |> 
- mutate(h = row_number()) |> 
- ungroup() |> 
- as_fable(response = "value", distribution = value)
-# toc()
-```
+Comencemos definiendo una lista de modelos candidatos.
 
 ```{r}
-fc_tb <- fc |> 
- accuracy(volcan, by = c("h", ".model")) |> 
- mutate(MSE = RMSE^2) |> 
- select(h, .model, RMSE, MSE)
+candidatos <- list(ar2 = c(2, 0, 0), ma3 = c(0, 0, 3))
 ```
 
+Creamos una función que nos ayude a iterar sobre ambos modelos
+
 ```{r}
-fc_tb |> 
+com <- function(stretch_ts, tsb, nm, pdq, horizonte = 1) {
+ c(p, d, q) %<-% as.list(pdq)	
+ nm <- rlang::sym(nm)
+	
+ stretch_ts |> 
+  model({{ nm }} := ARIMA(value ~ 1 + pdq(p, d, q))) |> 
+  forecast(h = horizonte) |> 
+  group_by(.id) |>
+  mutate(h = row_number()) |>
+  ungroup() |>
+  as_fable(response = "value", distribution = value) |>
+  accuracy(tsb, by = c("h", ".model")) |>
+  select(h, .model, RMSE) |> 
+  rename(modelo = .model)
+}
+```
+
+Por facilidad, guardemos los argumentos en una lista
+
+```{r}
+args <- list(stretch_ts = volcan_tr, tsb = volcan)
+```
+
+Iteremos con un horizonte de 5 años.
+
+```{r}
+res <- candidatos |> 
+ imap(~ exec("com", !!!args, nm = .y, pdq = .x, horizonte = 5)) |> 
+ bind_rows()
+```
+
+(ref:gr-07) Resumen gráfico
+
+```{r, gr-07, fig.cap='(ref:gr-07)'}
+res |> 
  ggplot(aes(x = h, y = RMSE)) +
- geom_point() +
- labs(title = "Desempeño del modelo de 1 a 5 años",
- 	  subtitle = "El gráfico muestra que el error de pronóstico aumenta a medida que aumenta el horizonte de pronóstico, como cabría esperar.")
-```
-
-
-
-
-
-
-
-
-
-# Comparar
-
-```{r}
-fit_fc <- fit |>
- forecast(h = 94)
-```
-
-```{r}
-fit_fc
-```
-
-```{r}
-fit_fc |> 
- autoplot(volcan)
-```
-
-(ref:gr-05) Resumen gráfico
-
-```{r, gr-05, fig.cap='(ref:gr-05)'}
-fit_fc |> 
- filter(.model == best_gof_model[1]) |> 
- autoplot(volcan)
+ geom_point(aes(shape = modelo, color = modelo), size = 5) +
+ labs(title = glue("Desempeño de los modelos para un horizonte de 1 a 5 años"),
+  	   subtitle = "Observar cómo cambia la exactitud de las predicciones cuando se aleja más el dato a predecir")
 ```
 
 <br/>
 
-<p class="comment">
-En el gráfico \@ref(fig:gr-05) vemos la linea azul la cual representa la predicción media de
-nuestro modelo. Aquí estamos utilizando el modelo que nos entregó una mejor bondad de ajuste
-con los datos de entrenamiento y **no necesariamente es el mejor modelo para predecir.**
-</p>
+En el gráfico \@ref(fig:gr-07) se observa que el método `forecast::tsCV()` y el método
+`tsibble::stretch_tsibble()` `r resaltar("arrojan resultados similares en cuanto a el RMSE
+del primer año, tanto para AR(2) como para MA(3)")`
 
+<p class="comment">
+Vemos que el modelo AR2 tiene un menor error de pronóstico con CV en los primeros 2 años,
+sin embargo, el modelo MA3 tiene un menor error en el año 4 y 5
+</p>
 
 # Predecir
 
-(ref:gr-06) Resumen gráfico
+(ref:gr-06) Para que sea más fácil de visualizar, realizamos una predicción hasta el año 2023
 
 ```{r, gr-06, fig.cap='(ref:gr-06)'}
-fit_fc |> 
- filter(.model == best_rmse_model) |> 
+fit |> 
+ forecast(h = 54) |> 
+ filter(.model == "ar2") |> 
  autoplot(volcan)
 ```
 
 <br/>
-
-<p class="comment">
-En el gráfico \@ref(fig:gr-06) se observa la linea azul la cual representa la predicción
-media de nuestro modelo. Aquí estamos utilizando el modelo que nos entregó una mejor RMSE
-con los datos de prueba y solo con cross-validación podremos saber como se incrementa el
-error de este modelo a medida que se extiende el horizonte de pronóstico.
-</p>
-
-
-# Coeficientes
 
 ```{r, coef}
 t1 |> tabla(cap = "Coeficientes")
 ```
 
-<p class="comment">
-En la tabla \@ref(tab:coef) vemos los coeficientes del modelo MA(3).  Sabemos que si
-$c \neq 0$ y $d = 0$ los pronósticos a largo plazo irán a la media de los datos. Este
-comportamiento se ve en la figura \@ref(fig:gr-06) en la que los intervalos de predicción
-tienen casi el mismo ancho para los últimos horizontes de pronósticos y los pronósticos de
-puntos finales están cerca de la media de los datos.
-</p>
-
-## Constante
+</br>
 
 La función `fable::ARIMA()` utiliza una parametrización alternativa de constantes a la de
 `stats::arima()` y `forecast::Arima()`. Si bien las parametrizaciones son equivalentes,
-`r resaltar("los coeficientes para la constante/media serán diferentes.")`.
+`r resaltar("los coeficientes para la constante/media que nos da fable::ARIMA() serán
+diferentes a las de stats::arima() y forecast::Arima()")`.
 Ver https://bit.ly/36gbLP3
 
-# ANEXOS
 
-Analicemos como se dividiría la serie si no hubiéramos realizdo la validación cruzada.
+</br>
 
-## Split
+# Conclusiones
 
-```{r}
-sw <- (nrow(volcan) * 0.8) %>% ceiling()
-train <- volcan %>% slice(1:sw)
-test  <- volcan %>% slice(sw + 1:n())
-corte <- max(train$year)
-ultim <- max(test$year)
-```
+`r resaltar("Las previsiones parecen razonables")`
 
-
-```{r}
-autoplot(train, value, size = 0.8) +
- autolayer(test, value, color = "red", size = 0.8) +
- annotate("rect",
- 			 xmin = train$year[1],
- 			 xmax = corte,
- 			 ymin = -Inf,
- 			 ymax = Inf,
- 			 fill = "red",
- 			 alpha = .1) +
- annotate("rect",
- 			 xmin = corte,
- 			 xmax = ultim,
- 			 ymin = -Inf,
- 			 ymax = Inf,
- 			 fill = "blue",
- 			 alpha = .1) +
- annotate(geom = "text",
-          x = corte - 175,
- 			 y = 600, size = 10,
-          label = "80%") +
- annotate(geom = "text",
-          x = corte + 47,
- 			 y = 600, size = 10,
-          label = "20%") +
- labs(title = "Training and test sets")
-```
-
-
-
+<p class="comment">
+En el gráfico \@ref(fig:gr-06) se observa la linea azul la cual representa la predicción
+media de nuestro modelo. Aquí estamos utilizando el modelo que nos entregó un mejor RMSE con
+cross-validación.  En la tabla \@ref(tab:coef) vemos los coeficientes de los modelos.
+Sabemos que si $c \neq 0$ y $d = 0$ los pronósticos a largo plazo irán a la media de los
+datos. Vemos en la figura \@ref(fig:gr-06)que los intervalos de predicción tienen casi el
+mismo ancho para los últimos horizontes de pronósticos y los pronósticos de puntos finales
+están cerca de la media de los datos. 
+</p>
 
 
 # Bibliografía
