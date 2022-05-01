@@ -460,19 +460,19 @@ graficar <- function(.df, vector, .brk) {
 }
 
 # agregar información en los valles y picos
-agregar_info <- function(gg_object) {
+agregar_info <- function(gg_object, spa = 7, tm = 3) {
  gg_object +
-  stat_peaks(geom = "point", span = 11, color = "red", size = 0.7) +
-  stat_valleys(geom = "point", span = 11, color = "blue", size = 0.7) +
+  stat_peaks(geom = "point", span = spa, color = "red", size = 0.7) +
+  stat_valleys(geom = "point", span = spa, color = "blue", size = 0.7) +
   stat_peaks(geom = "text",
-             span = 11,
+             span = spa,
              color = "red",
              vjust = 0,
              hjust = -0.5,
              x.label.fmt = "%b",
              size = 1.5) +
   stat_valleys(geom = "text",
-               span = 11,
+               span = spa,
                color = "blue",
                vjust = 0,
                hjust = -1,

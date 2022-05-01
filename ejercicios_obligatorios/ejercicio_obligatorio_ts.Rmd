@@ -1,6 +1,6 @@
 ---
 title: Time Series
-subtitle: Ejercicio Obligatorio
+subtitle: Ejercicio Obligatorio I
 author:
 - name: William Chavarría
   affiliation: Máxima Formación
@@ -83,7 +83,7 @@ import::from(glue, glue)
 import::from(colorblindr, scale_color_OkabeIto)
 import::from(tsutils, coxstuart)
 import::from(ggpmisc, stat_peaks, stat_valleys, stat_correlation)
-pacman::p_load(tictoc, scales, tsbox, latex2exp, fpp3, tidyverse)
+pacman::p_load(tictoc, scales, pins, tsbox, latex2exp, fpp3, tidyverse)
 ```
 
 ## Funciones
@@ -600,17 +600,63 @@ años
 
 ## Método forecast::tsCV()
 
-```{r}
+```{r, echo=FALSE}
+# corrida manual
+# ruta <- fs::path_wd("08_series_tiempo", "ejercicios_obligatorios", "objetos")
+# tablero <- board_folder(path = ruta)
+
+# corrida en knit 
+tablero <- board_folder(path = "./objetos")
+```
+
+
+```{r, eval=FALSE}
+# primera función
 far2 <- function(x, h){forecast(Arima(x, order = c(2,0,0)), h = h)}
-e <- tsCV(ts(volcan_raw, start = c(1500)), far2, h = 1)
-sqrt(mean(e^2, na.rm=TRUE)) 
+ar2_tscv <- tsCV(ts(volcan_raw, start = c(1500)), far2, h = 1)
+```
+
+```{r, eval=FALSE, echo=FALSE}
+pin_write(board = tablero,
+			 x     = ar2_tscv,
+			 name  = "ar2_tsCV",
+			 type  = "rds",
+			 title = "objeto_ar2",
+			 description = "primer_modelo")
+```
+
+```{r, echo=FALSE}
+ar2_tscv <- pin_read(board = tablero, name = "ar2_tsCV")
 ```
 
 ```{r}
-far2 <- function(x, h){forecast(Arima(x, order=c(0,0,3)), h=h)}
-e <- tsCV(ts(volcan_raw, start = c(1500)), far2, h = 1)
-sqrt(mean(e^2, na.rm=TRUE)) 
+sqrt(mean(ar2_tscv^2, na.rm=TRUE)) 
 ```
+
+
+```{r, eval=FALSE}
+far2 <- function(x, h){forecast(Arima(x, order=c(0,0,3)), h=h)}
+ma3_tscv <- tsCV(ts(volcan_raw, start = c(1500)), far2, h = 1)
+```
+
+
+```{r, eval=FALSE, echo=FALSE}
+pin_write(board = tablero,
+			 x     = ma3_tscv,
+			 name  = "ma3_tsCV",
+			 type  = "rds",
+			 title = "objeto_ma3",
+			 description = "segundo_modelo")
+```
+
+```{r, echo=FALSE}
+ma3_tscv <- pin_read(board = tablero, name = "ma3_tscv")
+```
+
+```{r}
+sqrt(mean(ma3_tscv^2, na.rm=TRUE)) 
+```
+
 
 ## Método tsibble::stretch_tsibble()
 
@@ -664,11 +710,26 @@ args <- list(stretch_ts = volcan_tr, tsb = volcan)
 
 Iteremos con un horizonte de 5 años.
 
-```{r}
+```{r, eval=FALSE}
 res <- candidatos |> 
  imap(~ exec("com", !!!args, nm = .y, pdq = .x, horizonte = 5)) |> 
  bind_rows()
 ```
+
+
+```{r, eval=FALSE, echo=FALSE}
+pin_write(board = tablero,
+			 x     = res,
+			 name  = "res_stretch",
+			 type  = "rds",
+			 title = "objeto_stretch",
+			 description = "mejor_cv")
+```
+
+```{r, echo=FALSE}
+res <- pin_read(board = tablero, name = "res_stretch")
+```
+
 
 (ref:gr-07) Resumen gráfico
 
@@ -676,7 +737,7 @@ res <- candidatos |>
 res |> 
  ggplot(aes(x = h, y = RMSE)) +
  geom_point(aes(shape = modelo, color = modelo), size = 5) +
- labs(title = glue("Desempeño de los modelos para un horizonte de 1 a 5 años"),
+ labs(title = glue("Desempeño de los modelos para un horizonte de 5 años"),
   	   subtitle = "Observar cómo cambia la exactitud de las predicciones cuando se aleja más el dato a predecir")
 ```
 
@@ -728,7 +789,7 @@ En el gráfico \@ref(fig:gr-06) se observa la linea azul la cual representa la p
 media de nuestro modelo. Aquí estamos utilizando el modelo que nos entregó un mejor RMSE con
 cross-validación.  En la tabla \@ref(tab:coef) vemos los coeficientes de los modelos.
 Sabemos que si $c \neq 0$ y $d = 0$ los pronósticos a largo plazo irán a la media de los
-datos. Vemos en la figura \@ref(fig:gr-06)que los intervalos de predicción tienen casi el
+datos. Vemos en la figura \@ref(fig:gr-06) que los intervalos de predicción tienen casi el
 mismo ancho para los últimos horizontes de pronósticos y los pronósticos de puntos finales
 están cerca de la media de los datos. 
 </p>
