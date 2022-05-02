@@ -78,6 +78,7 @@ import::from(tseries, adf.test)
 import::from(forecast, .except = c("accuracy", "forecast"))
 import::from(cowplot, .except = "stamp")
 import::from(glue, glue)
+import::from(statistigo, coloring_font)
 import::from(colorblindr, scale_color_OkabeIto)
 import::from(tsutils, coxstuart)
 import::from(ggpmisc, stat_peaks, stat_valleys, stat_correlation)
@@ -128,7 +129,7 @@ agregar_info <- function(gg_object, spa = 7) {
 est <- list(
   ljung = ~ ljung_box(diff(.x)),
   kpss  = ~ unitroot_kpss(.x), 
-  pp    = ~ unitroot_pp(.x),
+  # pp    = ~ unitroot_pp(.x),
   adf   = ~ adf.test(.x, alternative = "stationary") |>
                      tidy() |>
                      select(statistic, p.value) |>
@@ -249,11 +250,12 @@ theme_set(drako)
 # Load
 
 ```{r}
-euro <- fpp2::euretail |> as_tsibble() |> rename(fecha = index)
+euro_raw <- fpp2::euretail
+euro <- euro_raw |> as_tsibble() |> rename(fecha = index)
 ```
 
-```{r}
-head(euro)
+```{r, paged.print = FALSE}
+head(euro) |> tabla(cap = "Índice Comercial")
 ```
 
 # EDA
@@ -278,7 +280,7 @@ partir de Octubre del 2000, finalizando en Enero de 2001.
 de 2007 cuando cae de forma sostenida hasta que se estabiliza en aproximadamente 97 puntos
 en octubre de 2010, pero nunca regresa a sus niveles anteriores.
 
-- La muestra una fuerte tendencia a la alza. 
+- La muestra una fuerte tendencia a la alza. La serie no es estacionaria en la **media**.
 
 - A simple vista no se aprecia estacionalidad.
 
@@ -288,6 +290,8 @@ en octubre de 2010, pero nunca regresa a sus niveles anteriores.
 euro |> model(stl = STL(value)) |> components() |> autoplot()
 ```
 
+</br>
+
 Las barras grises a la izquierda de cada panel muestran las escalas relativas de los
 componentes. Cada barra gris representa la misma longitud pero debido a que las gráficas
 están en diferentes escalas, las barras varían en tamaño. La barra gris grande en el panel
@@ -295,8 +299,7 @@ del medio muestra que la variación en el componente restante es menor en compar
 variación en los datos.
 
 <p class="comment">
-La descomposición detectó un componente de tendencia muy fuerte. Si vemos un componente
-estacional anual.
+La descomposición detectó un componente de tendencia muy fuerte, así como estacionalidad.
 </p>
 
 ## Tendencia
@@ -359,8 +362,9 @@ del índice en el Q4.
 ## Estacionariedad
 
 Veamos los retardos significativos en un correlograma. Para esto, utilizaremos la función
-`retardos()` definida en la sección de funciones para que nos ayude a visualizar esto de
-mejor forma:
+`retardos()`, la cual devuelve los valores de lag al igual que la función
+`ggAcf(euro_raw, plot = F)` con la diferencia de que solo devuelve los lags que son
+significativos. 
 
 ### Prueba informal
 
@@ -377,7 +381,7 @@ euro |> gg_tsdisplay(value, plot_type = "partial")
 
 ```{r, retar}
 retardos(euro, ACF, columna = value) |> 
- left_join(retardos(euro, PACF), by = "lag") |> 
+ left_join(retardos(euro, PACF, value), by = "lag") |> 
  tabla(cap = "Retardos significativos en ACF y PACF")
 ```
 
@@ -407,8 +411,8 @@ es estacionaria.")`
 
 ### Pruebas formales
 
-```{r, formal-test}
-euro |> 
+```{r}
+euro_test <- euro |> 
  as_tibble() |> 
  summarise(across(value, est)) |> 
  slice(2) |> 
@@ -416,58 +420,97 @@ euro |>
  pivot_longer(cols = everything(), 
               names_to = "test",
               values_to = "p_valor") |> 
- mutate(null_hypothesis = c("stationarity", "stationarity", "non-stationarity",
-                            "non-stationarity"),
- 		  resultado = case_when(
- 		  	p_valor < 0.05 & null_hypothesis == "stationarity" ~ "no_estacionaria",
- 		  	p_valor < 0.05 & null_hypothesis == "non-stationarity" ~ "estacionaria",
- 		  	TRUE ~ "estacionaria"
- 		  )) |> 
- tabla(cap = "Pruebas formales de estacionariedad")
- 
+ mutate(null_hypothesis = c("stationarity", "stationarity", "non-stationarity"))
 ```
 
-Los resultados de los test de estacionaridad son divergentes.
+
+```{r, formal-test}
+euro_test |> 
+ mutate(resultado = c("no-estacionaria", 
+                      "no-estacionaria",
+                      "no-estacionaria")) |> 
+ tabla(cap = "Pruebas formales de estacionariedad")
+```
+
+Los resultados de los test de estacionaridad son consistentes
 
 </br>
 
 # Transformación
 
-Tanto en la gráfica \@ref(fig:gr-01) como en las pruebas formales de la tabla
-\@ref(tab:formal-test) vemos que una transformación **es necesaria**.
+Las transformaciones como los logaritmos pueden ayudar a estabilizar la varianza de una serie
+temporal. La diferenciación puede ayudar a estabilizar la media de una serie temporal
+eliminando los cambios en el nivel de una serie temporal y, por lo tanto, eliminando (o
+reduciendo) la tendencia y la estacionalidad.
 
 ## Diferencias
 
-Debido a que la tendencia se ve bastante lineal, es decir, no vemos cambio en la varianza
-no será necesario aplicar logaritmos.  Será suficiente con aplicar diferencias.
+
+```{r, nd}
+euro |> 
+ features(log(value), features = list(unitroot_ndiffs,
+                                      unitroot_nsdiffs)) |> 
+ tabla("Diferencias")
+```
+
+<p class="comment">
+Vemos en la tabla \@ref(tab:nd) que se requieren 2 diferencias para que los datos de
+comercio sean estacionarios.  También vemos que se requiere al menos una diferencia
+estacional.  Auque se sugiere que cuando $F_{s} \leq 64$ no es necesario aplicar una
+diferencia estacional, en este caso, lo realizaremos.
+</p>
+
 
 ```{r}
 euro_diff <- euro |> 
- mutate(primera_diff = difference(value, differences = 1),
- 		  segunda_diff = difference(value, differences = 2),
- 		  tercera_diff = difference(value, differences = 3))
+ mutate(diff_estacional = difference(log(value), lag = 12),
+        primera_diff = difference(diff_estacional, lag = 1)) |> 
+ slice(12:n())
 ```
+
+```{r, pdf}
+euro_diff |> slice(1:5) |> tabla("Diferencia estacional y primera diferencia")
+```
+
+</br>
+
+En la tabla \@ref(tab:pdf) vemos los resultados de la diferencia estacional aplicada al
+logaritmo de los valores y luego vemos una primera diferencia aplicada la diferencia
+estacional.  Este procedimiento es lo mismo que si hubiéramos aplicado el método:
+
+</br>
+
+<div align="center">
+`r coloring_font("**<tt>diff(diff(log(euro), lag = 12), lag = 1)</tt>**", color = "blue")`
+</div>
+
+Veamos si con esta primer diferencia, posterior a la diferenciación estacional es suficiente:
+
+```{r}
+euro_diff |> 
+ features(primera_diff, features = list(unitroot_ndiffs,
+                                        unitroot_nsdiffs)) |> 
+ tabla("La serie ya es estacionaria")
+```
+
+Vemos que la serie ya es estacionaria.
 
 
 ```{r}
 euro_diff |> 
- pivot_longer(cols = value:tercera_diff, names_to = "diferencias", values_to = "valor") |> 
+ pivot_longer(cols = value:primera_diff, names_to = "diferencias", values_to = "valor") |> 
  mutate(diferencias = factor(diferencias, levels = c("value",
- 												                 "primera_diff",
- 												                 "segunda_diff",
- 												                 "tercera_diff"))) |> 
+ 																	  "diff_estacional",
+ 												                 "primera_diff"))) |> 
  ggplot(aes(x = fecha, y = valor)) +
  geom_line() +
- facet_grid(rows = vars(diferencias), scales = "free_y")
+ facet_grid(rows = vars(diferencias), scales = "free_y") +
+ labs(title = "Estacionarizar la serie")
 ```
 
-TODO: Validé que el segundo retardo que me da con la función retardo da igual que
-el obtenido con la función feature(xxx, feat_acf)
 
-
-
-
-
+TODO: Le mandé correo a Rosana sobre cuando debemos idenfificar manualmente el orden, si
+antes de diferenciar o despúes de diferenciar.
 
 
 
