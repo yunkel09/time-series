@@ -454,29 +454,46 @@ euro |>
 ```
 
 <p class="comment">
-Vemos en la tabla \@ref(tab:nd) que se requieren 2 diferencias para que los datos de
-comercio sean estacionarios.  También vemos que se requiere al menos una diferencia
-estacional.  Auque se sugiere que cuando $F_{s} \leq 64$ no es necesario aplicar una
-diferencia estacional, en este caso, lo realizaremos.
+Vemos en la tabla \@ref(tab:nd) que se requieren 2 diferencias para que los datos de comercio
+sean estacionarios.  Una diferencia estacional yuna primera diferencia. También vemos que se
+requiere al menos una diferencia estacional.  Auque se sugiere que cuando $F_{s} \leq 64$ no
+es necesario aplicar una diferencia estacional.
 </p>
 
+(ref:gr-05) Resumen gráfico
+
+```{r, gr-05, fig.cap='(ref:gr-05)'}
+euro |> 
+ mutate(log_value = log(value)) |> 
+ pivot_longer(value:log_value, "variable", "valor") |> 
+ ggplot(aes(x = fecha, y = value)) +
+ geom_line(aes(color = variable), size = 1) +
+ scale_color_OkabeIto() +
+ facet_grid(rows = vars(variable), scales = "free_y")
+```
+
+<br/>
+
+En el gráfico \@ref(fig:gr-05) se observa como se ve la gráfica aplicando el logaritmo.
+No hay evidencia de cambio de varianza, por lo que no haremos una transformación de Box-Cox.
 
 ```{r}
 euro_diff <- euro |> 
- mutate(diff_estacional = difference(log(value), lag = 12),
-        primera_diff = difference(diff_estacional, lag = 1)) |> 
- slice(12:n())
+ mutate(diff_estacional = difference(value, lag = 4), # son datos trimestrales
+        primera_diff = difference(diff_estacional, lag = 1))
 ```
 
 ```{r, pdf}
-euro_diff |> slice(1:5) |> tabla("Diferencia estacional y primera diferencia")
+euro_diff |> slice(1:20) |> tabla("Diferencia estacional y primera diferencia")
 ```
 
 </br>
-
+<p class="comment">
 En la tabla \@ref(tab:pdf) vemos los resultados de la diferencia estacional aplicada al
-logaritmo de los valores y luego vemos una primera diferencia aplicada la diferencia
+logaritmo de los valores y luego vemos una primera diferencia aplicada a la diferencia
 estacional.  Este procedimiento es lo mismo que si hubiéramos aplicado el método:
+</p>
+
 
 </br>
 
@@ -486,17 +503,29 @@ estacional.  Este procedimiento es lo mismo que si hubiéramos aplicado el méto
 
 Veamos si con esta primer diferencia, posterior a la diferenciación estacional es suficiente:
 
+
 ```{r}
 euro_diff |> 
- features(primera_diff, features = list(unitroot_ndiffs,
-                                        unitroot_nsdiffs)) |> 
- tabla("La serie ya es estacionaria")
+	features_at(.vars = vars(diff_estacional, primera_diff), 
+					features = list(unitroot_ndiffs,
+                               unitroot_nsdiffs)) |> 
+	pivot_longer(everything(), 
+					 names_to = c("var","stat"),
+					 names_pattern = "(.*)_(.*)",
+					 values_to = "valores") |> 
+	pivot_wider(names_from = stat, values_from = valores) |> 
+	tabla("La serie ya es estacionaria")
 ```
 
-Vemos que la serie ya es estacionaria.
+<p class="comment">
+Vemos que la serie es estacionaria hasta después de aplicar la diferencia estaciona y la
+primera diferencia, es decir, no se vuelve completamente estacional hasta que se haya
+realizado una primera diferencia.
+</p>
 
+(ref:gr-06) Resumen gráfico
 
-```{r}
+```{r, gr-06, fig.cap='(ref:gr-06)'}
 euro_diff |> 
  pivot_longer(cols = value:primera_diff, names_to = "diferencias", values_to = "valor") |> 
  mutate(diferencias = factor(diferencias, levels = c("value",
@@ -508,16 +537,56 @@ euro_diff |>
  labs(title = "Estacionarizar la serie")
 ```
 
+<br/>
 
-TODO: Le mandé correo a Rosana sobre cuando debemos idenfificar manualmente el orden, si
-antes de diferenciar o despúes de diferenciar.
-
-
-
+En el gráfico \@ref(fig:gr-06) se observa la serie original, la serie con una diferencia
+estacional y la serie con una primera diferencia.
 
 
+# Modelado
 
+```{r}
+gg_tsdisplay(euro_diff, primera_diff, plot_type = "partial")
+```
 
+<p class="comment">
+Un posible modelo podría ser ARIMA(2, 1, 0) debido a que el ACF decae y PACF se corta en el
+retardo p = 2. También podríamos considerar un ARIMA(0, 1, 2) y por lo tanto en un ARIMA(2,
+1, 2)
+</p>
+
+## Auto ARIMA
+
+> Debido a que cortar una serie temporal en entrenamiento y prueba significa trabajar con
+datos de dos períodos distintos. Si existe algún cambio en los patrones principales en esos
+períodos, no tendría sentido hacerlo. De echo una opción en estos casos es detectar puntos de
+cambio en la serie temporal y, de ser posible por el tamaño, ajustar modelos distintos para
+los períodos identificados. Por tanto, no hay un único procedimiento correcto, depende del
+caso. 
+
+Con base a lo anterior, vamos a utilizar **todo** el conjunto de datos para encontrar el
+mejor modelo con `auto.arima()` y posteriormente realizaremos validación cruzada para
+evaluar su capacidad predictiva.
+
+Realizaremos el ajuste considerando los modelos observados AR(2) y MA(2) para luego dejar que
+la función `auto.arima()` busque primeramente con valores por defectos y luego la haremos
+buscar con los parámetros `stepwise = FALSE` y `greedy = FALSE` para que realice una búsqueda
+profunda.
+
+`r resaltar("Será necesario ajustar modelos alternativos:")`
+
+```{r}
+fit <- euro |> 
+ model(ar2  = ARIMA(value ~ 1 + pdq(2, 1, 0)),
+       ma3  = ARIMA(value ~ 1 + pdq(0, 1, 2)),
+       stepwise = ARIMA(value),
+       busqueda = ARIMA(value, stepwise = FALSE, greedy = FALSE),
+       preciso  = ARIMA(value, stepwise = FALSE, approximation = FALSE, greedy = FALSE))
+```
+
+TODO: Me regresa modelos nulos. Esto se debe a que no estoy ajustando manualmente la
+componente estacional. Debería ser más sistemático en mi procedimiento. Leer a Rob en la
+parte de ARIMA.
 
 
 
