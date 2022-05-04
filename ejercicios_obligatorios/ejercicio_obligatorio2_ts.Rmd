@@ -40,7 +40,7 @@ knitr::opts_chunk$set(echo        = TRUE,
                       fig.align   = "center")
 ```
 
-# Volcan {.tabset .tabset-fade .tabset-pills}
+# Índice de comercio {.tabset .tabset-fade .tabset-pills}
 
 ## Descripción
 
@@ -546,13 +546,20 @@ estacional y la serie con una primera diferencia.
 # Modelado
 
 ```{r}
-gg_tsdisplay(euro_diff, primera_diff, plot_type = "partial")
+gg_tsdisplay(euro_diff, primera_diff, plot_type = "partial") +
+	labs(title = "Doble diferenciación")
 ```
+`
+
 
 <p class="comment">
-Un posible modelo podría ser ARIMA(2, 1, 0) debido a que el ACF decae y PACF se corta en el
-retardo p = 2. También podríamos considerar un ARIMA(0, 1, 2) y por lo tanto en un ARIMA(2,
-1, 2)
+El pico significativo en el retardo 1 en el ACF sugiere un componente no-estacional MA(1).
+El pico significativo en el retardo 4 en el ACF sugiere un componente estacional MA(1).
+Comencemos con un modelo ARIMA(0, 1, 1)(0, 1, 1)[4] indicando una primera diferencia, una
+diferencia estacional, y componentes MA(1) no-estacional y MA(1) estacional. Si hubiéramos
+empezado con el PACF, podríamos haber seleccionado un modelo ARIMA(1, 1, 0)(0, 1, 1)[4],
+utilizando el PACF para seleccionar la parte no-estacional del modelo y el ACF para
+seleccionar la parte estacional.
 </p>
 
 ## Auto ARIMA
@@ -577,31 +584,136 @@ profunda.
 
 ```{r}
 fit <- euro |> 
- model(ar2  = ARIMA(value ~ 1 + pdq(2, 1, 0)),
-       ma3  = ARIMA(value ~ 1 + pdq(0, 1, 2)),
-       stepwise = ARIMA(value),
-       busqueda = ARIMA(value, stepwise = FALSE, greedy = FALSE),
-       preciso  = ARIMA(value, stepwise = FALSE, approximation = FALSE, greedy = FALSE))
+ model(arima011011 = ARIMA(value ~ pdq(0, 1, 1) + PDQ(0, 1, 1)),
+       arima100011 = ARIMA(value ~ pdq(1, 1, 0) + PDQ(0, 1, 1)),
+       auto  = ARIMA(value, stepwise = FALSE, approximation = FALSE, greedy = FALSE))
 ```
 
-TODO: Me regresa modelos nulos. Esto se debe a que no estoy ajustando manualmente la
-componente estacional. Debería ser más sistemático en mi procedimiento. Leer a Rob en la
-parte de ARIMA.
+
+```{r, paged.print = FALSE}
+fit |>
+ pivot_longer(everything(),
+ 				  names_to  = "modelo",
+ 				  values_to = "orden")
+```
 
 
+```{r}
+c(t1, t2) %<-% ajustar_modelos(fit, fun_list)
+```
 
 
+```{r, mejoraic}
+t2 |> tabla("Bondad de ajuste")
+```
+
+<p class="comment">
+En la tabla \@ref(tab:mejoraic) vemos que de los tres modelos ajustados, todos tienen un
+AICc bastante similar, siendo el modelo elegido automáticamente un poco mejor que los que
+intentamos determinar.
+</p>
 
 
+## Mejor AIC
+
+```{r}
+best_gof_model <- t2 |> 
+ slice_min(order_by = AICc) |> 
+ pull(.model)
+```
+
+```{r}
+best_gof_model
+```
+
+# Interpretación
+
+`r resaltar("¿coincide con tus modelos candidatos?")`
+
+<p class="comment">
+No, el mejor modelo no coincide con mis modelos candidatos. El modelo automático considera
+tres retardos significativos en el ACF, sin embargo, solo se aprecian dos.  Incluso aunque
+grafiquemos con un `lag_max = 50`. Aunque el retardo 2 está muy cerca del límite de confianza.
+En la gráfica \@ref(fig:gr-07) vemos el ACF con más definición y los  patrones estacionales
+son ligeramente más claros.
+</p>
 
 
+(ref:gr-07) Vista de ACF a mayores retardos
+
+```{r, gr-07, fig.cap='(ref:gr-07)'}
+ACF(euro_diff, primera_diff, lag_max = 50) |> 
+	autoplot()
+```
+
+<br/>
+
+`r resaltar("¿Qué tipo de modelo has obtenido?")`
+
+<p class="comment">
+El modelo obtenido es un ARIMA(0,1,3)(0,1,1)[4], lo que significa que se identificó una
+componente no estacional MA(3) y un componente estacional MA(1)
+</p>
 
 
+# Diagnóstico
+
+Realicemos un diagnóstico del mejor modelo obtenido con auto.arima para que después lo
+podamos comparar con validación cruzada.
+
+(ref:gr-08) Análisis de residuos
+
+```{r, gr-08, fig.cap='(ref:gr-08)'}
+fit |> 
+ select(any_of(best_gof_model)) |> 
+ gg_tsresiduals(lag = 36) +
+ labs(title = "Análisis de residuos")
+```
+
+<br/>
+
+<p class="comment">
+En el gráfico \@ref(fig:gr-08) se observa que los residuos no muestran un patrón evidente. 
+No hay picos significativos en 36 retardos visualizados. La distribución de los residuos se
+ve algo sesgada.
+</p>
 
 
+```{r}
+augment(fit) |> 
+ filter(.model == best_gof_model) |> 
+ features(.innov, ljung_box, lag = 24, dof = 4) |> 
+ tabla(cap = "Los residuos son ruido blanco")
+```
+
+</br>
+
+<p class="comment">
+El p-valor grande confirma que los residuos son similares al ruido blanco.
+</p>
+
+# Predicciones
+
+(ref:gr-09) Pronóstico del índice comercial  utilizando un modelo ARIMA(0, 1, 3)(0, 1, 1)[4]. Se muestran los intervalos del 80% y 95%.
+
+```{r, gr-09, fig.cap='(ref:gr-09)'}
+forecast(fit, h = 15) %>%
+ filter(.model == best_gof_model) %>%
+ autoplot(euro, show_gap = F) +
+ labs(title = "Predicción a 5 años (60 meses - 15 cuartos)",
+      y = "Índice comercial")
+```
+
+<br/>
 
 
-
+TODO:
+1. Debo aclarar bien como utilizar cross-validación en lugar de train-test
+2. En la predicción que acabo de hacer no uso ni train ni test. Es decir, no estoy evaluando
+RMSE, simplemente me fue con el modelo que lo hacía mejor en entrenamiento.
+3. En el ejercicio 1 debo corregir, a menos que el mejor modelo puesto a competir con
+cross-validación es el que verdaderamente lo hace bien.  Creo que esto es. Debo de 
+ponerlos a competir.  Mandarle la consulta a Rosana.
 
 
 
